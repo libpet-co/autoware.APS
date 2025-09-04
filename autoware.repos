@@ -27,8 +27,8 @@ repositories:
     version: 0.7.2
   core/autoware_core:
     type: git
-    url: https://github.com/autowarefoundation/autoware_core.git
-    version: 1.2.0
+    url: https://github.com/libpet-co/autoware_core.APS.git
+    version: aps_dev
   core/autoware_rviz_plugins:
     type: git
     url: https://github.com/autowarefoundation/autoware_rviz_plugins.git
