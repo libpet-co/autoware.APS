@@ -94,7 +94,7 @@ repositories:
   # launcher
   launcher/autoware_launch_APS:
     type: git
-    url: https://github.com/libpet-co/autoware_launch_APS.git
+    url: git@github.com:libpet-co/autoware_launch_APS.git
     version: test_perception
   launcher/autoware_launch_APS/sensor_kit/sample_sensor_kit_launch/tof:
     type: git
