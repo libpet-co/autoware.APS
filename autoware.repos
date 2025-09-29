@@ -96,11 +96,11 @@ repositories:
     type: git
     url: git@github.com:libpet-co/autoware_launch_APS.git
     version: test_perception
-  launcher/autoware_launch_APS/sensor_kit/aps_sensor_kit_launch/tof:
+  # sensor_component
+  sensor_component/external/tof_device:
     type: git
     url: git@github.com:libpet-co/tof_device.git
     version: main
-  # sensor_component
   sensor_component/external/sensor_component_description:
     type: git
     url: https://github.com/tier4/sensor_component_description.git
