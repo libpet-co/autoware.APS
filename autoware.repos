@@ -23,8 +23,8 @@ repositories:
     version: 1.4.2
   core/autoware_lanelet2_extension:
     type: git
-    url: https://github.com/autowarefoundation/autoware_lanelet2_extension.git
-    version: 0.7.2
+    url: git@github.com:libpet-co/autoware_lanelet2_extension.APS.git
+    version: aps_dev
   core/autoware_core:
     type: git
     url: https://github.com/libpet-co/autoware_core.APS.git
@@ -37,7 +37,7 @@ repositories:
   universe/autoware_universe.APS:
     type: git
     url: https://github.com/libpet-co/autoware_universe.APS.git
-    version: aps_dev
+    version: test_dev
   universe/external/tier4_ad_api_adaptor: # TODO(TIER IV): Migrate to AD API and remove this repository entry.
     type: git
     url: https://github.com/tier4/tier4_ad_api_adaptor.git
