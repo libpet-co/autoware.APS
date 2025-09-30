@@ -109,6 +109,10 @@ repositories:
     type: git
     url: https://github.com/tier4/nebula.git
     version: v0.2.6
+  sensor_component/external/olei_lidar_driver:
+    type: git
+    url: git@github.com:libpet-co/olei_lidar_driver.git
+    version: main
   # Fork of transport_drivers that enables reduction of copy operations
   sensor_component/transport_drivers:
     type: git
