@@ -96,6 +96,10 @@ repositories:
     type: git
     url: git@github.com:libpet-co/autoware_launch_APS.git
     version: test_perception
+  launcher/aps_vehicle_launch:
+    type: git
+    url: git@github.com:libpet-co/aps_vehicle_launch.git
+    version: main
   # sensor_component
   sensor_component/external/tof_device:
     type: git
@@ -112,6 +116,22 @@ repositories:
   sensor_component/external/olei_lidar_driver:
     type: git
     url: git@github.com:libpet-co/olei_lidar_driver.git
+    version: main
+  sensor_component/external/aps_ultrasonic:
+    type: git
+    url: git@github.com:libpet-co/aps_ultrasonic.git
+    version: main
+  sensor_component/external/aps_vcu:
+    type: git
+    url: git@github.com:libpet-co/vcu.APS.git
+    version: main
+  sensor_component/external/aps_imu_yesense:
+    type: git
+    url: git@github.com:libpet-co/aps_imu_yesense.git
+    version: main
+  sensor_component/external/robosense_lidar_driver:
+    type: git
+    url: git@github.com:libpet-co/robosense_lidar_driver.git
     version: main
   # Fork of transport_drivers that enables reduction of copy operations
   sensor_component/transport_drivers:
