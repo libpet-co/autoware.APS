@@ -96,7 +96,7 @@ repositories:
     type: git
     url: git@github.com:libpet-co/autoware_launch_APS.git
     version: test_perception
-  launcher/aps_vehicle_launch:
+  launcher/autoware_launch_APS/vehicle/aps_vehicle_launch/aps_vehicle_launch:
     type: git
     url: git@github.com:libpet-co/aps_vehicle_launch.git
     version: main
