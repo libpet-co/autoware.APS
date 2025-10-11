@@ -121,6 +121,10 @@ repositories:
     type: git
     url: git@github.com:libpet-co/aps_ultrasonic.git
     version: main
+  sensor_component/external/aps_speaker:
+    type: git
+    url: git@github.com:libpet-co/aps_speaker.git
+    version: main
   sensor_component/external/aps_vcu:
     type: git
     url: git@github.com:libpet-co/vcu.APS.git
