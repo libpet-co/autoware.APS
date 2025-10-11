@@ -21,7 +21,7 @@ repositories:
     type: git
     url: https://github.com/autowarefoundation/autoware_utils.git
     version: 1.4.2
-  core/autoware_lanelet2_extension:
+  core/autoware_lanelet2_extension.APS:
     type: git
     url: git@github.com:libpet-co/autoware_lanelet2_extension.APS.git
     version: aps_dev
