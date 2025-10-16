@@ -132,7 +132,7 @@ repositories:
   sensor_component/external/robosense_lidar_driver:
     type: git
     url: git@github.com:libpet-co/robosense_lidar_driver.git
-    version: main
+    version: robosense_airy_test
   # Fork of transport_drivers that enables reduction of copy operations
   sensor_component/transport_drivers:
     type: git
