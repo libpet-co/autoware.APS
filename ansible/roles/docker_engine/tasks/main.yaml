@@ -9,6 +9,7 @@
       - runc
     state: absent
     update_cache: true
+  tags: docker_engine
 
 - name: Install dependencies for setting up apt sources
   become: true
@@ -19,6 +20,7 @@
       - gnupg
       - lsb-release
     update_cache: true
+  tags: docker_engine
 
 # sudo mkdir -p /etc/apt/keyrings
 - name: Create the directory for keyrings
@@ -27,6 +29,7 @@
     state: directory
     path: /etc/apt/keyrings
     mode: 0755
+  tags: docker_engine
 
 # curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 - name: Authorize Docker GPG key
@@ -34,21 +37,25 @@
   ansible.builtin.apt_key:
     url: https://download.docker.com/linux/ubuntu/gpg
     keyring: /etc/apt/keyrings/docker.gpg
+  tags: docker_engine
 
 - name: Save result of 'dpkg --print-architecture'
   ansible.builtin.command: dpkg --print-architecture
   register: docker_engine__deb_architecture
   changed_when: false
+  tags: docker_engine
 
 - name: Save result of 'lsb_release -cs'
   ansible.builtin.command: lsb_release -cs
   register: docker_engine__lsb_release_cs
   changed_when: false
+  tags: docker_engine
 
 - name: Save result of 'lsb_release -is'
   ansible.builtin.command: lsb_release -is
   register: docker_engine__lsb_release_is
   changed_when: false
+  tags: docker_engine
 
 # echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/$(lsb_release -is | tr '[:upper:]' '[:lower:]') $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 - name: Add Docker apt repository to source list
@@ -58,6 +65,7 @@
     filename: docker
     state: present
     update_cache: true
+  tags: docker_engine
 
 - name: Install Docker Engine
   become: true
@@ -68,6 +76,7 @@
       - containerd.io
       - docker-compose-plugin
     update_cache: true
+  tags: docker_engine
 
 # sudo groupadd docker
 - name: Add docker group
@@ -75,6 +84,7 @@
   ansible.builtin.group:
     name: docker
     state: present
+  tags: docker_engine
 
 # sudo usermod -aG docker $USER
 - name: Add user to docker group
@@ -83,3 +93,4 @@
     name: "{{ ansible_user_id }}"
     groups: docker
     append: true
+  tags: docker_engine

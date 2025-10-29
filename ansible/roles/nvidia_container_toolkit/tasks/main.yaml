@@ -4,6 +4,7 @@
     url: https://nvidia.github.io/libnvidia-container/gpgkey
     state: present
     keyring: /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+  tags: nvidia_container_toolkit
 
 - name: Add NVIDIA container toolkit repository
   become: true
@@ -12,6 +13,7 @@
     state: present
     filename: nvidia-container-toolkit
     update_cache: true
+  tags: nvidia_container_toolkit
 
 - name: Install NVIDIA Container Toolkit
   become: true
@@ -19,12 +21,14 @@
     name:
       - nvidia-container-toolkit
     update_cache: true
+  tags: nvidia_container_toolkit
 
 - name: Add NVIDIA runtime support to docker engine
   become: true
   ansible.builtin.shell: |
     nvidia-ctk runtime configure --runtime=docker
   changed_when: true
+  tags: nvidia_container_toolkit
 
 - name: Restart docker daemon
   become: true
@@ -32,3 +36,4 @@
     name: docker
     state: restarted
   changed_when: true
+  tags: nvidia_container_toolkit

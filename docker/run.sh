@@ -26,6 +26,8 @@ DATA_PATH=""
 WORKSPACE_PATH=""
 USER_ID=""
 WORKSPACE=""
+REGISTRY_MIRROR="${DOCKER_REGISTRY_MIRROR:-}"
+REGISTRY_MIRROR_SANITIZED=""
 DEFAULT_LAUNCH_CMD="ros2 launch autoware_launch autoware.launch.xml map_path:=/autoware_map vehicle_model:=sample_vehicle sensor_model:=sample_sensor_kit"
 
 # Function to print help message
@@ -44,6 +46,7 @@ print_help() {
     echo -e "  ${GREEN}--no-nvidia${NC}          Disable NVIDIA GPU support"
     echo -e "  ${GREEN}--headless${NC}           Run Autoware in headless mode (default: false)"
     echo -e "  ${GREEN}--pull-latest-image${NC}  Pull the latest image before starting the container"
+    echo -e "  ${GREEN}--registry-mirror${NC}    Override ghcr.io with the specified registry host (or use DOCKER_REGISTRY_MIRROR env)"
     echo ""
 }
 
@@ -66,6 +69,10 @@ parse_arguments() {
             ;;
         --pull-latest-image)
             option_pull_latest_image=true
+            ;;
+        --registry-mirror)
+            REGISTRY_MIRROR="$2"
+            shift
             ;;
         --workspace)
             WORKSPACE_PATH="$2"
@@ -146,14 +153,52 @@ set_variables() {
     fi
 }
 
+# Normalize mirror host name (remove schemes/trailing slash)
+normalize_registry_mirror() {
+    if [ "$REGISTRY_MIRROR" = "" ]; then
+        return
+    fi
+    local sanitized="${REGISTRY_MIRROR#http://}"
+    sanitized="${sanitized#https://}"
+    sanitized="${sanitized%/}"
+    if [ "$sanitized" = "" ]; then
+        return
+    fi
+    REGISTRY_MIRROR_SANITIZED="$sanitized"
+}
+
+# Apply registry mirror to ghcr hosted images
+apply_registry_mirror() {
+    if [ "$REGISTRY_MIRROR_SANITIZED" = "" ]; then
+        return
+    fi
+    if [[ "$IMAGE" == ghcr.io/* ]]; then
+        IMAGE="${REGISTRY_MIRROR_SANITIZED}/${IMAGE#ghcr.io/}"
+    fi
+}
+
 # Set GPU flag based on option
 set_gpu_flag() {
     if [ "$option_no_nvidia" = "true" ]; then
         GPU_FLAG=""
+        return
+    fi
+
+    local runtime_flag=""
+    if command -v docker >/dev/null 2>&1; then
+        local runtime_list
+        runtime_list=$(docker info --format '{{range $name,$conf := .Runtimes}}{{$name}} {{end}}' 2>/dev/null || true)
+        if echo "$runtime_list" | grep -qw nvidia; then
+            runtime_flag="--runtime=nvidia"
+        fi
+    fi
+
+    if [ "$runtime_flag" != "" ]; then
+        GPU_FLAG="$runtime_flag"
     else
         GPU_FLAG="--gpus all"
-        IMAGE=${IMAGE}-cuda
     fi
+    IMAGE=${IMAGE}-cuda
 }
 
 # Set X display variables
@@ -169,7 +214,9 @@ set_x_display() {
 main() {
     # Parse arguments
     parse_arguments "$@"
+    normalize_registry_mirror
     set_variables
+    apply_registry_mirror
     set_gpu_flag
     set_x_display
 
@@ -186,6 +233,9 @@ main() {
     fi
     if [ "$MAP_PATH" != "" ]; then
         echo -e "${GREEN}MAP PATH(mounted):${NC} ${MAP_PATH}:/autoware_map"
+    fi
+    if [ "$REGISTRY_MIRROR_SANITIZED" != "" ]; then
+        echo -e "${GREEN}REGISTRY MIRROR:${NC} ${REGISTRY_MIRROR_SANITIZED}"
     fi
     echo -e "${GREEN}LAUNCH CMD:${NC} ${LAUNCH_CMD}"
     echo -e "${GREEN}-----------------------------------------------------------------${NC}"
