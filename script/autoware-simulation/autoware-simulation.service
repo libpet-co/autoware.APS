@@ -1,0 +1,18 @@
+[Unit]
+Description=Autoware Planning Simulator (ROS 2) Autostart
+Wants=network-online.target graphical-session.target
+After=network-online.target graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/libpet/autoware.APS
+Environment=HOME=/home/libpet
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/libpet/.Xauthority
+ExecStart=/home/libpet/autoware.APS/script/autoware-simulation/launch-simulation.sh
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=default.target
