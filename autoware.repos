@@ -101,10 +101,10 @@ repositories:
     url: git@github.com:libpet-co/aps_vehicle_launch.git
     version: main
   # sensor_component
-  sensor_component/external/tof_device:
+  sensor_component/external/aps_cam:
     type: git
-    url: git@github.com:libpet-co/tof_device.git
-    version: main
+    url: git@github.com:libpet-co/aps_cam.git
+    version: cam_test
   sensor_component/external/sensor_component_description:
     type: git
     url: https://github.com/tier4/sensor_component_description.git
@@ -113,10 +113,6 @@ repositories:
     type: git
     url: https://github.com/tier4/nebula.git
     version: v0.2.6
-  sensor_component/external/olei_lidar_driver:
-    type: git
-    url: git@github.com:libpet-co/olei_lidar_driver.git
-    version: main
   sensor_component/external/aps_ultrasonic:
     type: git
     url: git@github.com:libpet-co/aps_ultrasonic.git
