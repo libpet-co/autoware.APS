@@ -33,7 +33,7 @@ repositories:
     type: git
     # url: https://github.com/autowarefoundation/autoware_rviz_plugins.git
     # version: 0.1.0
-    url: https://github.com/libpet-co/autoware_rviz_plugins.git
+    url: git@github.com:libpet-co/autoware_rviz_plugins.git
     version: development
   # universe
   universe/autoware_universe.APS:
