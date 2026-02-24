@@ -97,11 +97,11 @@ repositories:
   launcher/autoware_launch_APS:
     type: git
     url: git@github.com:libpet-co/autoware_launch_APS.git
-    version: airy_test
+    version: speed_test
   launcher/autoware_launch_APS/vehicle/aps_vehicle_launch/aps_vehicle_launch:
     type: git
     url: git@github.com:libpet-co/aps_vehicle_launch.git
-    version: main
+    version: bf2e47ead1364012c6a93490aa2f48247434f792
   # sensor_component
   sensor_component/external/aps_cam:
     type: git
