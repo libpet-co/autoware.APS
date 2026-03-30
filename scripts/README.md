@@ -5,6 +5,12 @@ development and validation on top of the main `autoware.APS` workspace.
 
 ### Primary entrypoints
 
+- `hmi_env.sh`
+  Defines the shared runtime/log/cache directories used by the local HMI
+  scripts.
+- `start_local_hmi_stack_fast.sh`
+  Convenience wrapper for the common local HMI flow with production frontend
+  and microservice settings.
 - `start_local_hmi_stack.sh`
   Starts the local APS frontend/backend stack together with Autoware
   `planning_simulator` and the HMI container.
@@ -38,6 +44,12 @@ current local stack flow driven by `./start_local_hmi_stack_fast.sh`.
 - Runtime state, logs, and PID files default to `${APS_HMI_TEST_ROOT:-$HOME/hmi_test}`.
 
 ### Common flow
+
+```bash
+bash /root/autoware.APS/scripts/start_local_hmi_stack_fast.sh
+```
+
+If you want the non-fast entrypoint:
 
 ```bash
 bash /root/autoware.APS/scripts/start_local_hmi_stack.sh

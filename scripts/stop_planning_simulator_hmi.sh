@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/hmi_env.sh"
+
 ROOT_DIR="${APS_ROOT_DIR:-$HOME/autoware.APS}"
 HMI_TEST_ROOT="${APS_HMI_TEST_ROOT:-$HOME/hmi_test}"
 PID_DIR="${APS_HMI_PID_DIR:-$HMI_TEST_ROOT/.pid}"
