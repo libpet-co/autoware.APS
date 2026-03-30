@@ -57,6 +57,7 @@ fi
 
 ROOT_DIR="${APS_ROOT_DIR:-$HOME/autoware.APS}"
 OVERLAY_WS="${APS_HMI_OVERLAY_WS:-$HOME/autoware.APS_hmi_overlay_ws}"
+MAIN_LAUNCH_REPO="${APS_LAUNCH_REPO:-$ROOT_DIR/src/launcher/autoware_launch_APS}"
 HMI_TEST_ROOT="${APS_HMI_TEST_ROOT:-$HOME/hmi_test}"
 SCRIPT_HINT_DIR="${APS_HMI_SCRIPT_DIR:-$ROOT_DIR/scripts}"
 FRONTEND_URL="${APS_HMI_FRONTEND_URL:-http://127.0.0.1:3001/aps/welcome}"
@@ -235,12 +236,29 @@ echo "[INFO] HMI web zoom factor: ${WEB_ZOOM_FACTOR}"
 
 bash "${ROOT_DIR}/scripts/stop_planning_simulator_hmi.sh" >/dev/null 2>&1 || true
 
-if [[ ! -f "${OVERLAY_WS}/install/setup.bash" ]]; then
-  bash "${ROOT_DIR}/scripts/build_hmi_launch_overlay.sh" >/dev/null
+MAIN_HMI_BIN="${ROOT_DIR}/install/aps_hmi_container/lib/aps_hmi_container/aps_hmi_container"
+MAIN_RVIZ_CONFIG="${MAIN_LAUNCH_REPO}/autoware_launch/rviz/${RVIZ_CONFIG_NAME}"
+OVERLAY_HMI_BIN="${OVERLAY_WS}/install/aps_hmi_container/lib/aps_hmi_container/aps_hmi_container"
+OVERLAY_RVIZ_CONFIG="${OVERLAY_WS}/src/autoware_launch_APS/autoware_launch/rviz/${RVIZ_CONFIG_NAME}"
+
+HMI_BIN=""
+RVIZ_CONFIG=""
+HMI_SETUP_CMD="source \"${ROOT_DIR}/install/setup.bash\";"
+
+if [[ -x "${MAIN_HMI_BIN}" && -f "${MAIN_RVIZ_CONFIG}" ]]; then
+  HMI_BIN="${MAIN_HMI_BIN}"
+  RVIZ_CONFIG="${MAIN_RVIZ_CONFIG}"
+  echo "[INFO] HMI artifacts: using main workspace (${ROOT_DIR})"
+else
+  if [[ ! -f "${OVERLAY_WS}/install/setup.bash" ]]; then
+    bash "${ROOT_DIR}/scripts/build_hmi_launch_overlay.sh" >/dev/null
+  fi
+  HMI_BIN="${OVERLAY_HMI_BIN}"
+  RVIZ_CONFIG="${OVERLAY_RVIZ_CONFIG}"
+  HMI_SETUP_CMD="source \"${ROOT_DIR}/install/setup.bash\"; source \"${OVERLAY_WS}/install/setup.bash\";"
+  echo "[INFO] HMI artifacts: using overlay workspace (${OVERLAY_WS})"
 fi
 
-HMI_BIN="${OVERLAY_WS}/install/aps_hmi_container/lib/aps_hmi_container/aps_hmi_container"
-RVIZ_CONFIG="${OVERLAY_WS}/src/autoware_launch_APS/autoware_launch/rviz/${RVIZ_CONFIG_NAME}"
 if [[ ! -x "${HMI_BIN}" ]]; then
   echo "[ERROR] missing HMI container binary: ${HMI_BIN}" >&2
   exit 1
@@ -287,7 +305,7 @@ fi
 
 if [[ "${HMI_MODE}" == "single" ]]; then
   HMI_CMD="set -euo pipefail; \
-set +u; source /opt/ros/humble/setup.bash; source \"${ROOT_DIR}/install/setup.bash\"; source \"${OVERLAY_WS}/install/setup.bash\"; set -u; \
+set +u; source /opt/ros/humble/setup.bash; ${HMI_SETUP_CMD} set -u; \
 mkdir -p \"${ROS_DIR}\" \"${ROS_DIR}/log\"; \
 export ROS_HOME=\"${ROS_DIR}\"; \
 ${ROS_DOMAIN_ID_EXPORT_CMD}\
@@ -361,7 +379,7 @@ exec \"${HMI_BIN}\" \
 fi
 
 FRONTEND_CMD="set -euo pipefail; \
-set +u; source /opt/ros/humble/setup.bash; source \"${ROOT_DIR}/install/setup.bash\"; source \"${OVERLAY_WS}/install/setup.bash\"; set -u; \
+set +u; source /opt/ros/humble/setup.bash; ${HMI_SETUP_CMD} set -u; \
 mkdir -p \"${ROS_DIR}\" \"${ROS_DIR}/log\"; \
 export ROS_HOME=\"${ROS_DIR}\"; \
 ${ROS_DOMAIN_ID_EXPORT_CMD}\
