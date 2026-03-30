@@ -42,6 +42,8 @@ current local stack flow driven by `./start_local_hmi_stack_fast.sh`.
 - The HMI overlay workspace is available at
   `${APS_HMI_OVERLAY_WS:-$HOME/autoware.APS_hmi_overlay_ws}`.
 - Runtime state, logs, and PID files default to `${APS_HMI_TEST_ROOT:-$HOME/hmi_test}`.
+- ROS domain is optional. If you do not set `APS_ROS_DOMAIN_ID` or `ROS_DOMAIN_ID`,
+  the scripts leave it unset and ROS will fall back to its default domain `0`.
 
 ### Common flow
 

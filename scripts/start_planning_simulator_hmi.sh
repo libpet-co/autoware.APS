@@ -44,7 +44,7 @@ Environment overrides:
   APS_HMI_WAIT_AUTOWARE_SEC     Extra seconds to wait before starting HMI after Autoware sanity check (default: 0)
   APS_HMI_USE_SIM_TIME          true/false override for HMI RViz use_sim_time
   APS_HMI_SKIP_UI_CHECK         true/false skip local UI port check (default: false)
-  APS_ROS_DOMAIN_ID             ROS_DOMAIN_ID to export for both processes
+  APS_ROS_DOMAIN_ID             Optional ROS_DOMAIN_ID for both processes; if unset, rely on ROS default 0
   APS_CYCLONEDDS_CONFIG         CycloneDDS XML path (default: $HOME/cyclonedds.xml)
 
 Examples:
@@ -94,7 +94,13 @@ TARGET_MONITOR="${APS_HMI_TARGET_MONITOR:-primary}"
 LAYOUT_DIRECTION="${APS_HMI_LAYOUT_DIRECTION:-frontend_left}"
 WEBENGINE_GPU="${APS_HMI_WEBENGINE_GPU:-false}"
 WEB_ZOOM_FACTOR="${APS_HMI_WEB_ZOOM_FACTOR:-1.25}"
-ROS_DOMAIN_ID_VALUE="${APS_ROS_DOMAIN_ID:-${ROS_DOMAIN_ID:-0}}"
+ROS_DOMAIN_ID_VALUE="${APS_ROS_DOMAIN_ID:-${ROS_DOMAIN_ID:-}}"
+ROS_DOMAIN_ID_DISPLAY="unset (ROS default 0)"
+ROS_DOMAIN_ID_EXPORT_CMD=""
+if [[ -n "${ROS_DOMAIN_ID_VALUE}" ]]; then
+  ROS_DOMAIN_ID_DISPLAY="${ROS_DOMAIN_ID_VALUE}"
+  ROS_DOMAIN_ID_EXPORT_CMD="export ROS_DOMAIN_ID=\"${ROS_DOMAIN_ID_VALUE}\"; "
+fi
 CYCLONEDDS_CONFIG="${APS_CYCLONEDDS_CONFIG:-$HOME/cyclonedds.xml}"
 SKIP_UI_CHECK="${APS_HMI_SKIP_UI_CHECK:-false}"
 
@@ -220,7 +226,7 @@ echo "[INFO] pid dir: ${PID_DIR}"
 echo "[INFO] log dir: ${LOG_DIR}"
 echo "[INFO] ros dir: ${ROS_DIR}"
 echo "[INFO] WebEngine cache dir: ${WEBENGINE_CACHE_DIR}"
-echo "[INFO] ROS_DOMAIN_ID: ${ROS_DOMAIN_ID_VALUE}"
+echo "[INFO] ROS_DOMAIN_ID: ${ROS_DOMAIN_ID_DISPLAY}"
 echo "[INFO] HMI use_sim_time: ${planning_use_sim_time}"
 echo "[INFO] HMI mode: ${HMI_MODE}"
 echo "[INFO] HMI WebEngine GPU: ${WEBENGINE_GPU}"
@@ -248,7 +254,7 @@ set +u; source /opt/ros/humble/setup.bash; source \"${ROOT_DIR}/install/setup.ba
 mkdir -p \"${ROS_DIR}\" \"${ROS_DIR}/log\"; \
 export ROS_HOME=\"${ROS_DIR}\"; \
 export APS_HMI_PID_DIR=\"${PID_DIR}\"; \
-export ROS_DOMAIN_ID=\"${ROS_DOMAIN_ID_VALUE}\"; \
+${ROS_DOMAIN_ID_EXPORT_CMD}\
 export RMW_IMPLEMENTATION=\"\${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}\"; \
 if [[ -z \"\${CYCLONEDDS_URI:-}\" && -f \"${CYCLONEDDS_CONFIG}\" ]]; then export CYCLONEDDS_URI=\"file://${CYCLONEDDS_CONFIG}\"; fi; \
 exec ros2 launch autoware_launch planning_simulator.launch.xml rviz:=false"
@@ -283,7 +289,7 @@ if [[ "${HMI_MODE}" == "single" ]]; then
 set +u; source /opt/ros/humble/setup.bash; source \"${ROOT_DIR}/install/setup.bash\"; source \"${OVERLAY_WS}/install/setup.bash\"; set -u; \
 mkdir -p \"${ROS_DIR}\" \"${ROS_DIR}/log\"; \
 export ROS_HOME=\"${ROS_DIR}\"; \
-export ROS_DOMAIN_ID=\"${ROS_DOMAIN_ID_VALUE}\"; \
+${ROS_DOMAIN_ID_EXPORT_CMD}\
 export RMW_IMPLEMENTATION=\"\${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}\"; \
 if [[ -z \"\${CYCLONEDDS_URI:-}\" && -f \"${CYCLONEDDS_CONFIG}\" ]]; then export CYCLONEDDS_URI=\"file://${CYCLONEDDS_CONFIG}\"; fi; \
 export QT_QPA_PLATFORM=xcb; \
@@ -357,7 +363,7 @@ FRONTEND_CMD="set -euo pipefail; \
 set +u; source /opt/ros/humble/setup.bash; source \"${ROOT_DIR}/install/setup.bash\"; source \"${OVERLAY_WS}/install/setup.bash\"; set -u; \
 mkdir -p \"${ROS_DIR}\" \"${ROS_DIR}/log\"; \
 export ROS_HOME=\"${ROS_DIR}\"; \
-export ROS_DOMAIN_ID=\"${ROS_DOMAIN_ID_VALUE}\"; \
+${ROS_DOMAIN_ID_EXPORT_CMD}\
 export RMW_IMPLEMENTATION=\"\${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}\"; \
 if [[ -z \"\${CYCLONEDDS_URI:-}\" && -f \"${CYCLONEDDS_CONFIG}\" ]]; then export CYCLONEDDS_URI=\"file://${CYCLONEDDS_CONFIG}\"; fi; \
 export QT_QPA_PLATFORM=xcb; \
@@ -382,7 +388,7 @@ RVIZ_CMD="set -euo pipefail; \
 set +u; source /opt/ros/humble/setup.bash; source \"${ROOT_DIR}/install/setup.bash\"; set -u; \
 mkdir -p \"${ROS_DIR}\" \"${ROS_DIR}/log\"; \
 export ROS_HOME=\"${ROS_DIR}\"; \
-export ROS_DOMAIN_ID=\"${ROS_DOMAIN_ID_VALUE}\"; \
+${ROS_DOMAIN_ID_EXPORT_CMD}\
 export RMW_IMPLEMENTATION=\"\${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}\"; \
 if [[ -z \"\${CYCLONEDDS_URI:-}\" && -f \"${CYCLONEDDS_CONFIG}\" ]]; then export CYCLONEDDS_URI=\"file://${CYCLONEDDS_CONFIG}\"; fi; \
 export QT_QPA_PLATFORM=xcb; \
