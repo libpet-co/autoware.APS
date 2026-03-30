@@ -2,7 +2,9 @@
 set -euo pipefail
 
 ROOT_DIR="${APS_ROOT_DIR:-$HOME/autoware.APS}"
-OVERLAY_WS="${APS_HMI_OVERLAY_WS:-$HOME/autoware.APS_hmi_overlay_ws}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/hmi_env.sh"
 UI_HOST="${APS_UI_HOST:-127.0.0.1}"
 UI_PORT="${APS_UI_PORT:-3000}"
 FRONTEND_URL="${HMI_FRONTEND_URL:-http://${UI_HOST}:${UI_PORT}/aps/welcome}"
@@ -11,14 +13,13 @@ FULLSCREEN="${HMI_FULLSCREEN:-true}"
 WINDOW_TITLE="${HMI_WINDOW_TITLE:-APS HMI Container}"
 AUTO_START_UI="${APS_HMI_AUTO_START_UI:-true}"
 CYCLONEDDS_CONFIG="${APS_CYCLONEDDS_CONFIG:-$HOME/cyclonedds.xml}"
-UI_LOG="${OVERLAY_WS}/log/hmi_ui_preview.log"
-UI_PID_FILE="${OVERLAY_WS}/log/hmi_ui_preview.pid"
-LAUNCH_PID_FILE="${OVERLAY_WS}/log/hmi_launch.pid"
+UI_LOG="${APS_HMI_LOG_DIR}/hmi_ui_preview.log"
+UI_PID_FILE="${APS_HMI_PID_DIR}/hmi_ui_preview.pid"
+LAUNCH_PID_FILE="${APS_HMI_PID_DIR}/hmi_launch.pid"
 
-mkdir -p "${OVERLAY_WS}/log"
-
-if [[ ! -f "${OVERLAY_WS}/install/setup.bash" ]]; then
-  "${ROOT_DIR}/scripts/build_hmi_launch_overlay.sh"
+if [[ ! -f "${ROOT_DIR}/install/setup.bash" ]]; then
+  echo "[ERROR] missing main workspace setup: ${ROOT_DIR}/install/setup.bash" >&2
+  exit 1
 fi
 
 if [[ "${AUTO_START_UI}" == "true" ]]; then
@@ -36,7 +37,8 @@ if [[ "${AUTO_START_UI}" == "true" ]]; then
 fi
 
 set +u
-source "${OVERLAY_WS}/install/setup.bash"
+source /opt/ros/humble/setup.bash
+source "${ROOT_DIR}/install/setup.bash"
 set -u
 
 export ROS_LOCALHOST_ONLY="${ROS_LOCALHOST_ONLY:-0}"
@@ -46,7 +48,7 @@ if [[ -z "${CYCLONEDDS_URI:-}" && -f "${CYCLONEDDS_CONFIG}" ]]; then
 fi
 
 echo "[INFO] frontend: ${FRONTEND_URL}"
-echo "[INFO] overlay: ${OVERLAY_WS}"
+echo "[INFO] main workspace: ${ROOT_DIR}"
 echo "[INFO] middleware: RMW_IMPLEMENTATION=${RMW_IMPLEMENTATION}"
 if [[ -n "${CYCLONEDDS_URI:-}" ]]; then
   echo "[INFO] middleware: CYCLONEDDS_URI=${CYCLONEDDS_URI}"

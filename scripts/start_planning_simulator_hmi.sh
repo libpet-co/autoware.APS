@@ -56,7 +56,6 @@ EOF
 fi
 
 ROOT_DIR="${APS_ROOT_DIR:-$HOME/autoware.APS}"
-OVERLAY_WS="${APS_HMI_OVERLAY_WS:-$HOME/autoware.APS_hmi_overlay_ws}"
 MAIN_LAUNCH_REPO="${APS_LAUNCH_REPO:-$ROOT_DIR/src/launcher/autoware_launch_APS}"
 HMI_TEST_ROOT="${APS_HMI_TEST_ROOT:-$HOME/hmi_test}"
 SCRIPT_HINT_DIR="${APS_HMI_SCRIPT_DIR:-$ROOT_DIR/scripts}"
@@ -238,33 +237,20 @@ bash "${ROOT_DIR}/scripts/stop_planning_simulator_hmi.sh" >/dev/null 2>&1 || tru
 
 MAIN_HMI_BIN="${ROOT_DIR}/install/aps_hmi_container/lib/aps_hmi_container/aps_hmi_container"
 MAIN_RVIZ_CONFIG="${MAIN_LAUNCH_REPO}/autoware_launch/rviz/${RVIZ_CONFIG_NAME}"
-OVERLAY_HMI_BIN="${OVERLAY_WS}/install/aps_hmi_container/lib/aps_hmi_container/aps_hmi_container"
-OVERLAY_RVIZ_CONFIG="${OVERLAY_WS}/src/autoware_launch_APS/autoware_launch/rviz/${RVIZ_CONFIG_NAME}"
 
-HMI_BIN=""
-RVIZ_CONFIG=""
+HMI_BIN="${MAIN_HMI_BIN}"
+RVIZ_CONFIG="${MAIN_RVIZ_CONFIG}"
 HMI_SETUP_CMD="source \"${ROOT_DIR}/install/setup.bash\";"
-
-if [[ -x "${MAIN_HMI_BIN}" && -f "${MAIN_RVIZ_CONFIG}" ]]; then
-  HMI_BIN="${MAIN_HMI_BIN}"
-  RVIZ_CONFIG="${MAIN_RVIZ_CONFIG}"
-  echo "[INFO] HMI artifacts: using main workspace (${ROOT_DIR})"
-else
-  if [[ ! -f "${OVERLAY_WS}/install/setup.bash" ]]; then
-    bash "${ROOT_DIR}/scripts/build_hmi_launch_overlay.sh" >/dev/null
-  fi
-  HMI_BIN="${OVERLAY_HMI_BIN}"
-  RVIZ_CONFIG="${OVERLAY_RVIZ_CONFIG}"
-  HMI_SETUP_CMD="source \"${ROOT_DIR}/install/setup.bash\"; source \"${OVERLAY_WS}/install/setup.bash\";"
-  echo "[INFO] HMI artifacts: using overlay workspace (${OVERLAY_WS})"
-fi
+echo "[INFO] HMI artifacts: using main workspace (${ROOT_DIR})"
 
 if [[ ! -x "${HMI_BIN}" ]]; then
   echo "[ERROR] missing HMI container binary: ${HMI_BIN}" >&2
+  echo "Build it with: colcon build --packages-select aps_hmi_container autoware_launch --cmake-force-configure --symlink-install --allow-overriding autoware_launch --cmake-args -DBUILD_TESTING=OFF" >&2
   exit 1
 fi
 if [[ ! -f "${RVIZ_CONFIG}" ]]; then
   echo "[ERROR] missing RViz config: ${RVIZ_CONFIG}" >&2
+  echo "Check APS_LAUNCH_REPO or rebuild the main workspace launch artifacts." >&2
   exit 1
 fi
 

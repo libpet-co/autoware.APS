@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-OVERLAY_WS="${APS_HMI_OVERLAY_WS:-$HOME/autoware.APS_hmi_overlay_ws}"
-LAUNCH_PID_FILE="${OVERLAY_WS}/log/hmi_launch.pid"
-UI_PID_FILE="${OVERLAY_WS}/log/hmi_ui_preview.pid"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/hmi_env.sh"
+LAUNCH_PID_FILE="${APS_HMI_PID_DIR}/hmi_launch.pid"
+UI_PID_FILE="${APS_HMI_PID_DIR}/hmi_ui_preview.pid"
 
 process_alive() {
   local pid="$1"
