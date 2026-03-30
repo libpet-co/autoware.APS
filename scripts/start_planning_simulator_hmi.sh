@@ -44,6 +44,7 @@ Environment overrides:
   APS_HMI_WAIT_AUTOWARE_SEC     Extra seconds to wait before starting HMI after Autoware sanity check (default: 0)
   APS_HMI_USE_SIM_TIME          true/false override for HMI RViz use_sim_time
   APS_HMI_SKIP_UI_CHECK         true/false skip local UI port check (default: false)
+  APS_HMI_IMPORT_SHELL_ROS_ENV  true/false import ROS domain/RMW/CycloneDDS from ~/.bashrc when current shell does not set them (default: true)
   APS_ROS_DOMAIN_ID             Optional ROS_DOMAIN_ID for both processes; if unset, rely on ROS default 0
   APS_CYCLONEDDS_CONFIG         CycloneDDS XML path (default: $HOME/cyclonedds.xml)
 

@@ -3,6 +3,50 @@ set -euo pipefail
 
 ROOT_DIR="${APS_ROOT_DIR:-$HOME/autoware.APS}"
 HMI_TEST_ROOT="${HMI_TEST_ROOT:-$HOME/hmi_test}"
+BASHRC_PATH="${APS_HMI_ENV_BASHRC:-$HOME/.bashrc}"
+
+inherit_ros_env_from_bashrc() {
+  if [[ -n "${APS_ROS_DOMAIN_ID:-}" || -n "${ROS_DOMAIN_ID:-}" ]]; then
+    return 0
+  fi
+  if [[ ! -f "${BASHRC_PATH}" ]]; then
+    return 0
+  fi
+
+  local bashrc_env
+  bashrc_env="$(
+    HOME="${HOME}" \
+    USER="${USER:-$(id -un)}" \
+    LOGNAME="${LOGNAME:-${USER:-$(id -un)}}" \
+    SHELL=/bin/bash \
+    PATH="${PATH:-/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin}" \
+    bash -ic 'printf "APS_ROS_DOMAIN_ID=%s\nROS_DOMAIN_ID=%s\nRMW_IMPLEMENTATION=%s\nCYCLONEDDS_URI=%s\n" "${APS_ROS_DOMAIN_ID:-}" "${ROS_DOMAIN_ID:-}" "${RMW_IMPLEMENTATION:-}" "${CYCLONEDDS_URI:-}"' 2>/dev/null || true
+  )"
+
+  while IFS='=' read -r key value; do
+    [[ -n "${value}" ]] || continue
+    case "${key}" in
+      APS_ROS_DOMAIN_ID)
+        export APS_ROS_DOMAIN_ID="${value}"
+        ;;
+      ROS_DOMAIN_ID)
+        if [[ -z "${APS_ROS_DOMAIN_ID:-}" ]]; then
+          export ROS_DOMAIN_ID="${value}"
+        fi
+        ;;
+      RMW_IMPLEMENTATION)
+        export RMW_IMPLEMENTATION="${RMW_IMPLEMENTATION:-${value}}"
+        ;;
+      CYCLONEDDS_URI)
+        export CYCLONEDDS_URI="${CYCLONEDDS_URI:-${value}}"
+        ;;
+    esac
+  done <<< "${bashrc_env}"
+}
+
+if [[ "${APS_HMI_IMPORT_SHELL_ROS_ENV:-true}" == "true" ]]; then
+  inherit_ros_env_from_bashrc
+fi
 
 export APS_ROOT_DIR="${ROOT_DIR}"
 export HMI_TEST_ROOT="${HMI_TEST_ROOT}"
