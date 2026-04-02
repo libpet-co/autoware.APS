@@ -141,6 +141,13 @@ port_listening() {
   return 1
 }
 
+http_ready() {
+  local url="$1"
+  local code
+  code="$(curl -L -s -o /dev/null -w '%{http_code}' "${url}" 2>/dev/null || true)"
+  [[ "${code}" =~ ^2|^3 ]]
+}
+
 stop_pid_file() {
   local pid_file="$1"
   local pgid_file="$2"
@@ -187,17 +194,17 @@ PY
 )"
 
 if [[ "${SKIP_UI_CHECK}" != "true" && ( "${frontend_host}" == "127.0.0.1" || "${frontend_host}" == "localhost" ) ]]; then
-  echo "[INFO] waiting for local vehicle UI on ${frontend_host}:${frontend_port}"
+  echo "[INFO] waiting for local vehicle UI at ${FRONTEND_URL}"
   ready="false"
   for _ in $(seq 1 "${WAIT_UI_SEC}"); do
-    if port_listening "${frontend_host}" "${frontend_port}"; then
+    if http_ready "${FRONTEND_URL}"; then
       ready="true"
       break
     fi
     sleep 1
   done
   if [[ "${ready}" != "true" ]]; then
-    echo "[ERROR] local vehicle UI is not listening on ${frontend_host}:${frontend_port}" >&2
+    echo "[ERROR] local vehicle UI is not reachable at ${FRONTEND_URL}" >&2
     echo "Start your local vehicle UI/Nest stack first, or rerun with APS_HMI_SKIP_UI_CHECK=true" >&2
     exit 1
   fi

@@ -21,6 +21,11 @@ development and validation on top of the main `autoware.APS` workspace.
 - `stop_planning_simulator_hmi.sh`
   Stops the Autoware + HMI processes started by
   `start_planning_simulator_hmi.sh`.
+- `start_autoware_hmi.sh`
+  Starts `autoware.launch.xml` with the single-window HMI for vehicle-style
+  runtime validation.
+- `stop_autoware_hmi.sh`
+  Stops the Autoware + HMI processes started by `start_autoware_hmi.sh`.
 - `build_hmi_launch_overlay.sh`
   Legacy compatibility wrapper. It now builds the main workspace HMI artifacts
   in `${APS_ROOT_DIR:-$HOME/autoware.APS}` and no longer creates an overlay
@@ -63,4 +68,17 @@ Stop the stack with:
 
 ```bash
 bash /root/autoware.APS/scripts/stop_local_hmi_stack.sh
+```
+
+For the vehicle-style single-window HMI flow backed by
+`autoware.launch.xml`, use:
+
+```bash
+bash /root/autoware.APS/scripts/start_autoware_hmi.sh
+```
+
+Stop that flow with:
+
+```bash
+bash /root/autoware.APS/scripts/stop_autoware_hmi.sh
 ```

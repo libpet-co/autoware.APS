@@ -171,7 +171,7 @@ if [[ -n "${stack_pgid}" ]]; then
   echo "${stack_pgid}" > "${STACK_PGID_FILE}"
 fi
 
-echo "[INFO] waiting for frontend ${frontend_host}:${frontend_port} and microservice :${MICROSERVICE_PORT}..."
+echo "[INFO] waiting for frontend ${FRONTEND_URL} and microservice :${MICROSERVICE_PORT}..."
 for _ in $(seq 1 "${WAIT_SEC}"); do
   if ! process_alive "${stack_pid}"; then
     echo "[ERROR] local vehicle stack controller exited early. Last log lines:" >&2
@@ -180,7 +180,7 @@ for _ in $(seq 1 "${WAIT_SEC}"); do
     exit 1
   fi
 
-  if port_listening "${frontend_host}" "${frontend_port}" && port_listening "*" "${MICROSERVICE_PORT}"; then
+  if http_ready "${FRONTEND_URL}" && port_listening "*" "${MICROSERVICE_PORT}"; then
     ready="true"
     break
   fi
