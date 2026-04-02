@@ -22,8 +22,8 @@ development and validation on top of the main `autoware.APS` workspace.
   Stops the Autoware + HMI processes started by
   `start_planning_simulator_hmi.sh`.
 - `start_autoware_hmi.sh`
-  Starts `autoware.launch.xml` with the single-window HMI for vehicle-style
-  runtime validation.
+  Starts standalone `aps_hmi_container` plus `autoware.launch.xml` for
+  vehicle-style runtime validation.
 - `stop_autoware_hmi.sh`
   Stops the Autoware + HMI processes started by `start_autoware_hmi.sh`.
 - `build_hmi_launch_overlay.sh`
@@ -81,4 +81,13 @@ Stop that flow with:
 
 ```bash
 bash /root/autoware.APS/scripts/stop_autoware_hmi.sh
+```
+
+To pin or reprioritize the detached HMI process separately from Autoware,
+you can prepend launcher commands through environment variables, for example:
+
+```bash
+APS_HMI_LAUNCH_PREFIX='taskset -c 2-3 nice -n 5' \
+APS_AUTOWARE_LAUNCH_PREFIX='taskset -c 0-1' \
+bash /root/autoware.APS/scripts/start_autoware_hmi.sh
 ```
