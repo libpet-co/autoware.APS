@@ -22,6 +22,8 @@ colcon --log-base "${ROOT_DIR}/log" build \
   --cmake-force-configure \
   --symlink-install \
   --allow-overriding autoware_launch \
-  --cmake-args -DBUILD_TESTING=OFF
+  --cmake-args \
+    -DBUILD_TESTING=OFF \
+    -DAPS_HMI_PREFER_WEBKIT=OFF
 
 echo "[INFO] main workspace build ready: ${ROOT_DIR}/install/setup.bash"

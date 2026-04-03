@@ -44,6 +44,8 @@ Environment overrides:
   APS_HMI_WAIT_UI_SEC             Max seconds waiting for local UI URL (default: 60)
   APS_HMI_SKIP_UI_CHECK           true/false skip local UI reachability check (default: false)
   APS_HMI_IMPORT_SHELL_ROS_ENV    true/false import ROS env from ~/.bashrc when needed
+  APS_HMI_DISPLAY                 Explicit X11 display override (default: auto-detect, usually :0)
+  APS_HMI_XAUTHORITY              Explicit X11 authority file override
   APS_ROS_DOMAIN_ID               Optional ROS_DOMAIN_ID override
   APS_CYCLONEDDS_CONFIG           CycloneDDS XML path (default: $HOME/cyclonedds.xml)
   APS_AUTOWARE_USE_SIM_TIME       Autoware use_sim_time value (default: false)
@@ -124,6 +126,8 @@ else
   echo "Use APS_HMI_MODE=single or APS_HMI_MODE=compose" >&2
   exit 1
 fi
+
+ensure_hmi_display_access
 
 http_ready() {
   local url="$1"

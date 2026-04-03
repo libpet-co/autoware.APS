@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Exec=/home/libpet-aps/bin/start_local_hmi_stack_fast_autostart.sh
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=0
+Name=APS Local HMI Stack
+Comment=Start APS standalone HMI and Autoware stack

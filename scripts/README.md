@@ -28,8 +28,35 @@ development and validation on top of the main `autoware.APS` workspace.
   Stops the Autoware + HMI processes started by `start_autoware_hmi.sh`.
 - `build_hmi_launch_overlay.sh`
   Legacy compatibility wrapper. It now builds the main workspace HMI artifacts
-  in `${APS_ROOT_DIR:-$HOME/autoware.APS}` and no longer creates an overlay
-  workspace.
+  in `${APS_ROOT_DIR:-$HOME/autoware.APS}`, no longer creates an overlay
+  workspace, and forces `aps_hmi_container` to build against Qt WebEngine
+  instead of falling back to Qt WebKit from an old CMake cache.
+- `install_user_hmi_autostart.sh`
+  Installs the GNOME autostart desktop entry, wrapper script, and
+  `aps-local-hmi-stack.service` assets for the current user.
+
+### Autostart assets
+
+The repo also carries the reusable user-session assets used on vehicle-style
+machines under `./autostart/`:
+
+- `autostart/start_local_hmi_stack_fast.sh.desktop`
+- `autostart/start_local_hmi_stack_fast_autostart.sh`
+- `autostart/aps-local-hmi-stack.service`
+- `autostart/aps-local-hmi-stack.service.d/cpu-tuning.conf`
+
+Install them with:
+
+```bash
+bash /root/autoware.APS/scripts/install_user_hmi_autostart.sh
+```
+
+If you need to keep the legacy desktop autostart entries in place while
+testing, use:
+
+```bash
+bash /root/autoware.APS/scripts/install_user_hmi_autostart.sh --keep-legacy-autostart
+```
 
 ### Optional preview helpers
 
@@ -51,6 +78,10 @@ current local stack flow driven by `./start_local_hmi_stack_fast.sh`.
   does not already export them. Disable this with `APS_HMI_IMPORT_SHELL_ROS_ENV=false`.
 - ROS domain is optional. If you do not set `APS_ROS_DOMAIN_ID` or `ROS_DOMAIN_ID`,
   the scripts leave it unset and ROS will fall back to its default domain `0`.
+- The GUI entrypoints auto-detect an X11 display when `DISPLAY` is unset and
+  will try a minimal `gdm` `xhost` grant when started over SSH on machines that
+  still expose the desktop on `:0`. Override with `APS_HMI_DISPLAY` and
+  `APS_HMI_XAUTHORITY` if needed.
 
 ### Common flow
 

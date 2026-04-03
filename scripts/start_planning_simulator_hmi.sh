@@ -45,6 +45,8 @@ Environment overrides:
   APS_HMI_USE_SIM_TIME          true/false override for HMI RViz use_sim_time
   APS_HMI_SKIP_UI_CHECK         true/false skip local UI port check (default: false)
   APS_HMI_IMPORT_SHELL_ROS_ENV  true/false import ROS domain/RMW/CycloneDDS from ~/.bashrc when current shell does not set them (default: true)
+  APS_HMI_DISPLAY               Explicit X11 display override (default: auto-detect, usually :0)
+  APS_HMI_XAUTHORITY            Explicit X11 authority file override
   APS_ROS_DOMAIN_ID             Optional ROS_DOMAIN_ID for both processes; if unset, rely on ROS default 0
   APS_CYCLONEDDS_CONFIG         CycloneDDS XML path (default: $HOME/cyclonedds.xml)
 
@@ -119,6 +121,8 @@ if [[ "${HMI_MODE}" != "compose" && "${HMI_MODE}" != "single" ]]; then
   echo "Use APS_HMI_MODE=compose or APS_HMI_MODE=single" >&2
   exit 1
 fi
+
+ensure_hmi_display_access
 
 port_listening() {
   local host="$1"

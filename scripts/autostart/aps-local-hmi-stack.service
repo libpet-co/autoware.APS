@@ -1,0 +1,16 @@
+[Unit]
+Description=APS Local HMI Stack
+After=graphical-session.target
+Wants=graphical-session.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+Environment=APS_HMI_WAIT_UI_SEC=180
+ExecStart=/usr/bin/bash -lc 'exec %h/autoware.APS/scripts/start_autoware_hmi.sh'
+ExecStop=/usr/bin/bash -lc 'exec %h/autoware.APS/scripts/stop_autoware_hmi.sh'
+TimeoutStartSec=210
+TimeoutStopSec=60
+
+[Install]
+WantedBy=default.target
