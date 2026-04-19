@@ -18,9 +18,9 @@ Defaults:
   use_sim_time:=false
   vehicle_model:=aps_vehicle
   sensor_model:=aps_sensor_kit
-  sensor_config_profile:=aps998
-  lanelet2_map_file:=frontway2.osm
-  pointcloud_map_file:=front.pcd
+  sensor_config_profile:=aps002
+  lanelet2_map_file:=map_ele.osm
+  pointcloud_map_file:=hkairport.pcd
   HMI mode: single
 
 Environment overrides:
@@ -55,9 +55,9 @@ Environment overrides:
   APS_AUTOWARE_MAP_PATH           Optional explicit map_path override
   APS_AUTOWARE_VEHICLE_MODEL      vehicle_model override (default: aps_vehicle)
   APS_AUTOWARE_SENSOR_MODEL       sensor_model override (default: aps_sensor_kit)
-  APS_AUTOWARE_SENSOR_CONFIG_PROFILE sensor_config_profile override (default: aps998)
-  APS_AUTOWARE_LANELET2_MAP_FILE  lanelet2 map file override (default: frontway2.osm)
-  APS_AUTOWARE_POINTCLOUD_MAP_FILE pointcloud map file override (default: front.pcd)
+  APS_AUTOWARE_SENSOR_CONFIG_PROFILE sensor_config_profile override (default: aps002)
+  APS_AUTOWARE_LANELET2_MAP_FILE  lanelet2 map file override (default: map_ele.osm)
+  APS_AUTOWARE_POINTCLOUD_MAP_FILE pointcloud map file override (default: hkairport.pcd)
 
 Examples:
   bash /root/autoware.APS/scripts/start_autoware_hmi.sh
@@ -110,9 +110,9 @@ AUTOWARE_USE_SIM_TIME="${APS_AUTOWARE_USE_SIM_TIME:-false}"
 AUTOWARE_MAP_PATH="${APS_AUTOWARE_MAP_PATH:-}"
 AUTOWARE_VEHICLE_MODEL="${APS_AUTOWARE_VEHICLE_MODEL:-aps_vehicle}"
 AUTOWARE_SENSOR_MODEL="${APS_AUTOWARE_SENSOR_MODEL:-aps_sensor_kit}"
-AUTOWARE_SENSOR_CONFIG_PROFILE="${APS_AUTOWARE_SENSOR_CONFIG_PROFILE:-aps998}"
-AUTOWARE_LANELET2_MAP_FILE="${APS_AUTOWARE_LANELET2_MAP_FILE:-frontway2.osm}"
-AUTOWARE_POINTCLOUD_MAP_FILE="${APS_AUTOWARE_POINTCLOUD_MAP_FILE:-front.pcd}"
+AUTOWARE_SENSOR_CONFIG_PROFILE="${APS_AUTOWARE_SENSOR_CONFIG_PROFILE:-aps002}"
+AUTOWARE_LANELET2_MAP_FILE="${APS_AUTOWARE_LANELET2_MAP_FILE:-map_ele.osm}"
+AUTOWARE_POINTCLOUD_MAP_FILE="${APS_AUTOWARE_POINTCLOUD_MAP_FILE:-hkairport.pcd}"
 
 mkdir -p "${PID_DIR}" "${LOG_DIR}" "${ROS_DIR}" "${ROS_DIR}/log" "${WEBENGINE_CACHE_DIR}"
 
