@@ -42,7 +42,10 @@ Environment overrides:
   APS_HMI_LAUNCH_PREFIX           Optional shell prefix for standalone HMI, e.g. 'taskset -c 2-3 nice -n 5'
   APS_AUTOWARE_LAUNCH_PREFIX      Optional shell prefix for autoware.launch.xml, e.g. 'taskset -c 0-1'
   APS_HMI_WAIT_UI_SEC             Max seconds waiting for local UI URL (default: 60)
+  APS_HMI_UI_WAIT_MODE            block/async/skip local UI precheck mode (default: async)
   APS_HMI_SKIP_UI_CHECK           true/false skip local UI reachability check (default: false)
+  APS_HMI_LOADING_GATE_SLOW_SEC   Seconds before Loading APS switches to delayed state (default: 90)
+  APS_HMI_LOADING_GATE_WATCHDOG_LOG_SEC Seconds between repeated loading gate warnings (default: 15)
   APS_HMI_IMPORT_SHELL_ROS_ENV    true/false import ROS env from ~/.bashrc when needed
   APS_HMI_DISPLAY                 Explicit X11 display override (default: auto-detect, usually :0)
   APS_HMI_XAUTHORITY              Explicit X11 authority file override
@@ -78,6 +81,9 @@ HMI_LOG_FILE="${LOG_DIR}/hmi_container.log"
 HMI_PID_FILE="${PID_DIR}/hmi_container.pid"
 HMI_PGID_FILE="${PID_DIR}/hmi_container.pgid"
 WAIT_UI_SEC="${APS_HMI_WAIT_UI_SEC:-60}"
+UI_WAIT_MODE="$(printf '%s' "${APS_HMI_UI_WAIT_MODE:-async}" | tr '[:upper:]' '[:lower:]')"
+LOADING_GATE_SLOW_SEC="${APS_HMI_LOADING_GATE_SLOW_SEC:-90}"
+LOADING_GATE_WATCHDOG_LOG_SEC="${APS_HMI_LOADING_GATE_WATCHDOG_LOG_SEC:-15}"
 FULLSCREEN="${APS_HMI_FULLSCREEN:-true}"
 RVIZ_RATIO="${APS_HMI_RVIZ_RATIO:-30}"
 WINDOW_TITLE="${APS_HMI_WINDOW_TITLE:-APS HMI Container}"
@@ -115,6 +121,16 @@ if [[ ! -f "${ROOT_DIR}/install/setup.bash" ]]; then
   exit 1
 fi
 
+case "${UI_WAIT_MODE}" in
+  block|async|skip)
+    ;;
+  *)
+    echo "[ERROR] unsupported APS_HMI_UI_WAIT_MODE: ${UI_WAIT_MODE}" >&2
+    echo "Use APS_HMI_UI_WAIT_MODE=block, async, or skip" >&2
+    exit 1
+    ;;
+esac
+
 if [[ "${HMI_MODE}" == "single" ]]; then
   HMI_SINGLE_CONTAINER="true"
   HMI_COMPOSE_LAYOUT="false"
@@ -145,19 +161,27 @@ PY
 )"
 
 if [[ "${SKIP_UI_CHECK}" != "true" && ( "${frontend_host}" == "127.0.0.1" || "${frontend_host}" == "localhost" ) ]]; then
-  echo "[INFO] waiting for local vehicle UI at ${FRONTEND_URL}"
-  ready="false"
-  for _ in $(seq 1 "${WAIT_UI_SEC}"); do
-    if http_ready "${FRONTEND_URL}"; then
-      ready="true"
-      break
+  if http_ready "${FRONTEND_URL}"; then
+    :
+  elif [[ "${UI_WAIT_MODE}" == "block" ]]; then
+    echo "[INFO] waiting for local vehicle UI at ${FRONTEND_URL}"
+    ready="false"
+    for _ in $(seq 1 "${WAIT_UI_SEC}"); do
+      if http_ready "${FRONTEND_URL}"; then
+        ready="true"
+        break
+      fi
+      sleep 1
+    done
+    if [[ "${ready}" != "true" ]]; then
+      echo "[ERROR] local vehicle UI is not reachable at ${FRONTEND_URL}" >&2
+      echo "Start your local vehicle UI/Nest stack first, or rerun with APS_HMI_SKIP_UI_CHECK=true" >&2
+      exit 1
     fi
-    sleep 1
-  done
-  if [[ "${ready}" != "true" ]]; then
-    echo "[ERROR] local vehicle UI is not reachable at ${FRONTEND_URL}" >&2
-    echo "Start your local vehicle UI/Nest stack first, or rerun with APS_HMI_SKIP_UI_CHECK=true" >&2
-    exit 1
+  elif [[ "${UI_WAIT_MODE}" == "async" ]]; then
+    echo "[INFO] local vehicle UI is not ready yet at ${FRONTEND_URL}; starting HMI immediately and letting it retry in background"
+  else
+    echo "[INFO] skipping local vehicle UI precheck for ${FRONTEND_URL}"
   fi
 fi
 
@@ -172,6 +196,9 @@ echo "[INFO] HMI fullscreen: ${FULLSCREEN}"
 echo "[INFO] HMI rviz ratio: ${RVIZ_RATIO}"
 echo "[INFO] HMI WebEngine GPU: ${WEBENGINE_GPU}"
 echo "[INFO] HMI web zoom factor: ${WEB_ZOOM_FACTOR}"
+echo "[INFO] HMI UI wait mode: ${UI_WAIT_MODE}"
+echo "[INFO] HMI loading gate slow sec: ${LOADING_GATE_SLOW_SEC}"
+echo "[INFO] HMI loading gate watchdog log sec: ${LOADING_GATE_WATCHDOG_LOG_SEC}"
 if [[ -n "${HMI_LAUNCH_PREFIX}" ]]; then
   echo "[INFO] HMI launch prefix: ${HMI_LAUNCH_PREFIX}"
 fi
