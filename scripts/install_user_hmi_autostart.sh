@@ -109,12 +109,14 @@ if [[ "${KEEP_LEGACY_AUTOSTART}" != "true" ]]; then
 fi
 
 systemctl --user daemon-reload
+systemctl --user enable aps-local-hmi-stack.service >/dev/null
 
 echo "[INFO] installed APS local HMI autostart assets."
 echo "[INFO] desktop: ${TARGET_AUTOSTART_DIR}/start_local_hmi_stack_fast.sh.desktop"
 echo "[INFO] wrapper: ${TARGET_BIN_DIR}/start_local_hmi_stack_fast_autostart.sh"
 echo "[INFO] user unit: ${TARGET_SYSTEMD_DIR}/aps-local-hmi-stack.service"
 echo "[INFO] drop-in: ${TARGET_DROPIN_DIR}/cpu-tuning.conf"
+echo "[INFO] enabled user unit: aps-local-hmi-stack.service"
 if [[ -n "${BACKUP_DIR}" ]]; then
   echo "[INFO] backup dir: ${BACKUP_DIR}"
 fi
