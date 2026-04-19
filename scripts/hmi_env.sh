@@ -116,6 +116,7 @@ find_working_hmi_xauthority() {
   local display="$1"
   local candidate
   local gdm_uid=""
+  local current_uid=""
   local -a candidates=()
   local seen=":"
 
@@ -124,6 +125,12 @@ find_working_hmi_xauthority() {
   fi
   if [[ -n "${XAUTHORITY:-}" ]]; then
     candidates+=("${XAUTHORITY}")
+  fi
+  if [[ -n "${XDG_RUNTIME_DIR:-}" ]]; then
+    candidates+=("${XDG_RUNTIME_DIR}/gdm/Xauthority")
+  fi
+  if current_uid="$(id -u 2>/dev/null)"; then
+    candidates+=("/run/user/${current_uid}/gdm/Xauthority")
   fi
   candidates+=("${HOME}/.Xauthority")
 
@@ -151,12 +158,31 @@ find_working_hmi_xauthority() {
 find_gdm_xauthority() {
   local candidate
   local gdm_uid=""
+  local current_uid=""
   local xorg_cmd=""
+
+  if [[ -n "${XDG_RUNTIME_DIR:-}" ]]; then
+    candidate="${XDG_RUNTIME_DIR}/gdm/Xauthority"
+    if [[ -r "${candidate}" ]]; then
+      printf '%s\n' "${candidate}"
+      return 0
+    fi
+  fi
+
+  if current_uid="$(id -u 2>/dev/null)"; then
+    candidate="/run/user/${current_uid}/gdm/Xauthority"
+    if [[ -r "${candidate}" ]]; then
+      printf '%s\n' "${candidate}"
+      return 0
+    fi
+  fi
 
   if gdm_uid="$(id -u gdm 2>/dev/null)"; then
     candidate="/run/user/${gdm_uid}/gdm/Xauthority"
-    printf '%s\n' "${candidate}"
-    return 0
+    if [[ -r "${candidate}" ]]; then
+      printf '%s\n' "${candidate}"
+      return 0
+    fi
   fi
 
   xorg_cmd="$(ps -u gdm -o args= 2>/dev/null | awk '/[X]org/ { print; exit }')"
