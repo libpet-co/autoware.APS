@@ -103,9 +103,11 @@ install -m 0644 \
 if [[ "${KEEP_LEGACY_AUTOSTART}" != "true" ]]; then
   backup_if_exists "${TARGET_AUTOSTART_DIR}/start_autoware_aps.sh.desktop"
   backup_if_exists "${TARGET_AUTOSTART_DIR}/APS_UI_Management.sh.desktop"
+  backup_if_exists "${TARGET_AUTOSTART_DIR}/update-notifier.desktop"
   rm -f \
     "${TARGET_AUTOSTART_DIR}/start_autoware_aps.sh.desktop" \
-    "${TARGET_AUTOSTART_DIR}/APS_UI_Management.sh.desktop"
+    "${TARGET_AUTOSTART_DIR}/APS_UI_Management.sh.desktop" \
+    "${TARGET_AUTOSTART_DIR}/update-notifier.desktop"
 fi
 
 systemctl --user daemon-reload
