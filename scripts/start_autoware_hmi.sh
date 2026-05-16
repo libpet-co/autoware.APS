@@ -42,10 +42,13 @@ Environment overrides:
   APS_HMI_LAUNCH_PREFIX           Optional shell prefix for standalone HMI, e.g. 'taskset -c 2-3 nice -n 5'
   APS_AUTOWARE_LAUNCH_PREFIX      Optional shell prefix for autoware.launch.xml, e.g. 'taskset -c 0-1'
   APS_HMI_WAIT_UI_SEC             Max seconds waiting for local UI URL (default: 60)
+  APS_HMI_WAIT_SHELL_SEC          Max seconds waiting for the native HMI shell before Autoware launch (default: 30)
   APS_HMI_UI_WAIT_MODE            block/async/skip local UI precheck mode (default: async)
   APS_HMI_SKIP_UI_CHECK           true/false skip local UI reachability check (default: false)
   APS_HMI_LOADING_GATE_SLOW_SEC   Seconds before Loading APS switches to delayed state (default: 90)
   APS_HMI_LOADING_GATE_WATCHDOG_LOG_SEC Seconds between repeated loading gate warnings (default: 15)
+  APS_HMI_USE_SETUP_ENV_CACHE     true/false use precomputed ROS setup env (default: false)
+  APS_HMI_SETUP_ENV_CACHE         Sourceable env cache path (default: $APS_HMI_TEST_ROOT/.cache/autoware_setup_env.bash)
   APS_HMI_IMPORT_SHELL_ROS_ENV    true/false import ROS env from ~/.bashrc when needed
   APS_HMI_DISPLAY                 Explicit X11 display override (default: auto-detect, usually :0)
   APS_HMI_XAUTHORITY              Explicit X11 authority file override
@@ -74,13 +77,17 @@ PID_DIR="${APS_HMI_PID_DIR:-$HMI_TEST_ROOT/.pid}"
 LOG_DIR="${APS_HMI_LOG_DIR:-$HMI_TEST_ROOT/.log}"
 ROS_DIR="${APS_HMI_ROS_DIR:-$HMI_TEST_ROOT/.ros}"
 WEBENGINE_CACHE_DIR="${APS_HMI_WEBENGINE_CACHE_DIR:-$HMI_TEST_ROOT/.cache/webengine}"
+SETUP_ENV_CACHE="${APS_HMI_SETUP_ENV_CACHE:-$HMI_TEST_ROOT/.cache/autoware_setup_env.bash}"
+USE_SETUP_ENV_CACHE="$(printf '%s' "${APS_HMI_USE_SETUP_ENV_CACHE:-false}" | tr '[:upper:]' '[:lower:]')"
 AUTOWARE_LOG_FILE="${LOG_DIR}/autoware_launch_hmi.log"
 AUTOWARE_PID_FILE="${PID_DIR}/autoware_launch.pid"
 AUTOWARE_PGID_FILE="${PID_DIR}/autoware_launch.pgid"
 HMI_LOG_FILE="${LOG_DIR}/hmi_container.log"
 HMI_PID_FILE="${PID_DIR}/hmi_container.pid"
 HMI_PGID_FILE="${PID_DIR}/hmi_container.pgid"
+HMI_SHELL_WID_FILE="${PID_DIR}/hmi_shell.wid"
 WAIT_UI_SEC="${APS_HMI_WAIT_UI_SEC:-60}"
+WAIT_HMI_SHELL_SEC="${APS_HMI_WAIT_SHELL_SEC:-30}"
 UI_WAIT_MODE="$(printf '%s' "${APS_HMI_UI_WAIT_MODE:-async}" | tr '[:upper:]' '[:lower:]')"
 LOADING_GATE_SLOW_SEC="${APS_HMI_LOADING_GATE_SLOW_SEC:-90}"
 LOADING_GATE_WATCHDOG_LOG_SEC="${APS_HMI_LOADING_GATE_WATCHDOG_LOG_SEC:-15}"
@@ -121,6 +128,17 @@ if [[ ! -f "${ROOT_DIR}/install/setup.bash" ]]; then
   exit 1
 fi
 
+ROS_SETUP_CMD="source /opt/ros/humble/setup.bash; source \"${ROOT_DIR}/install/setup.bash\";"
+ROS_SETUP_SOURCE_DESC="full setup (${ROOT_DIR}/install/setup.bash)"
+if [[ "${USE_SETUP_ENV_CACHE}" == "true" ]]; then
+  if [[ -r "${SETUP_ENV_CACHE}" ]]; then
+    ROS_SETUP_CMD="source \"${SETUP_ENV_CACHE}\";"
+    ROS_SETUP_SOURCE_DESC="cached env (${SETUP_ENV_CACHE})"
+  else
+    echo "[WARN] APS_HMI_USE_SETUP_ENV_CACHE=true but cache is missing: ${SETUP_ENV_CACHE}; falling back to full ROS setup" >&2
+  fi
+fi
+
 case "${UI_WAIT_MODE}" in
   block|async|skip)
     ;;
@@ -150,6 +168,32 @@ http_ready() {
   local code
   code="$(curl -L -s -o /dev/null -w '%{http_code}' "${url}" 2>/dev/null || true)"
   [[ "${code}" =~ ^2|^3 ]]
+}
+
+wait_for_hmi_shell() {
+  local pid="$1"
+  local wait_sec="$2"
+
+  if [[ ! "${wait_sec}" =~ ^[0-9]+$ || "${wait_sec}" -le 0 ]]; then
+    return 0
+  fi
+
+  echo "[INFO] waiting up to ${wait_sec}s for native HMI shell before Autoware launch"
+  for _ in $(seq 1 "${wait_sec}"); do
+    if [[ -s "${HMI_SHELL_WID_FILE}" ]]; then
+      echo "[INFO] native HMI shell is ready"
+      return 0
+    fi
+    if ! kill -0 "${pid}" >/dev/null 2>&1; then
+      echo "[ERROR] standalone aps_hmi_container exited before native HMI shell was ready" >&2
+      tail -n 80 "${HMI_LOG_FILE}" >&2 || true
+      rm -f "${HMI_PID_FILE}" "${HMI_PGID_FILE}"
+      exit 1
+    fi
+    sleep 1
+  done
+
+  echo "[WARN] native HMI shell did not become ready within ${wait_sec}s; continuing with Autoware launch"
 }
 
 frontend_host="$(python3 - "${FRONTEND_URL}" <<'PY'
@@ -197,8 +241,10 @@ echo "[INFO] HMI rviz ratio: ${RVIZ_RATIO}"
 echo "[INFO] HMI WebEngine GPU: ${WEBENGINE_GPU}"
 echo "[INFO] HMI web zoom factor: ${WEB_ZOOM_FACTOR}"
 echo "[INFO] HMI UI wait mode: ${UI_WAIT_MODE}"
+echo "[INFO] HMI shell wait sec: ${WAIT_HMI_SHELL_SEC}"
 echo "[INFO] HMI loading gate slow sec: ${LOADING_GATE_SLOW_SEC}"
 echo "[INFO] HMI loading gate watchdog log sec: ${LOADING_GATE_WATCHDOG_LOG_SEC}"
+echo "[INFO] ROS setup env: ${ROS_SETUP_SOURCE_DESC}"
 if [[ -n "${HMI_LAUNCH_PREFIX}" ]]; then
   echo "[INFO] HMI launch prefix: ${HMI_LAUNCH_PREFIX}"
 fi
@@ -222,7 +268,6 @@ MAIN_RVIZ_CONFIG="${MAIN_LAUNCH_REPO}/autoware_launch/rviz/${RVIZ_CONFIG_NAME}"
 
 HMI_BIN="${MAIN_HMI_BIN}"
 RVIZ_CONFIG="${MAIN_RVIZ_CONFIG}"
-HMI_SETUP_CMD="source \"${ROOT_DIR}/install/setup.bash\";"
 echo "[INFO] HMI artifacts: using main workspace (${ROOT_DIR})"
 
 if [[ "${HMI_MODE}" == "single" ]]; then
@@ -238,7 +283,7 @@ if [[ "${HMI_MODE}" == "single" ]]; then
   fi
 
   HMI_CMD="set -euo pipefail; \
-set +u; source /opt/ros/humble/setup.bash; ${HMI_SETUP_CMD} set -u; \
+set +u; ${ROS_SETUP_CMD} set -u; \
 mkdir -p \"${ROS_DIR}\" \"${ROS_DIR}/log\"; \
 export ROS_HOME=\"${ROS_DIR}\"; \
 export APS_HMI_PID_DIR=\"${PID_DIR}\"; \
@@ -269,6 +314,7 @@ exec ${HMI_LAUNCH_PREFIX} \"${HMI_BIN}\" \
 --ros-args -r __node:=aps_hmi_container -p use_sim_time:=${AUTOWARE_USE_SIM_TIME}"
 
   echo "[INFO] starting standalone aps_hmi_container..."
+  rm -f "${HMI_SHELL_WID_FILE}"
   nohup setsid bash -lc "${HMI_CMD}" >>"${HMI_LOG_FILE}" 2>&1 &
   hmi_pid=$!
   echo "${hmi_pid}" > "${HMI_PID_FILE}"
@@ -284,6 +330,8 @@ exec ${HMI_LAUNCH_PREFIX} \"${HMI_BIN}\" \
     rm -f "${HMI_PID_FILE}" "${HMI_PGID_FILE}"
     exit 1
   fi
+
+  wait_for_hmi_shell "${hmi_pid}" "${WAIT_HMI_SHELL_SEC}"
 fi
 
 AUTOWARE_ARGS=(
@@ -320,7 +368,7 @@ for arg in "${AUTOWARE_ARGS[@]}"; do
 done
 
 AUTOWARE_CMD="set -euo pipefail; \
-set +u; source /opt/ros/humble/setup.bash; source \"${ROOT_DIR}/install/setup.bash\"; set -u; \
+set +u; ${ROS_SETUP_CMD} set -u; \
 mkdir -p \"${ROS_DIR}\" \"${ROS_DIR}/log\"; \
 export ROS_HOME=\"${ROS_DIR}\"; \
 export APS_HMI_PID_DIR=\"${PID_DIR}\"; \

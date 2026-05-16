@@ -114,6 +114,13 @@ Stop that flow with:
 bash /root/autoware.APS/scripts/stop_autoware_hmi.sh
 ```
 
+On vehicles that enable `APS_HMI_USE_SETUP_ENV_CACHE=true`, regenerate the
+cached ROS setup environment after rebuilding or replacing `install/`:
+
+```bash
+bash /root/autoware.APS/scripts/generate_autoware_setup_env_cache.sh
+```
+
 To pin or reprioritize the detached HMI process separately from Autoware,
 you can prepend launcher commands through environment variables, for example:
 
