@@ -34,7 +34,7 @@ Environment overrides:
   APS_HMI_WINDOW_TITLE            HMI window title (default: APS HMI Container)
   APS_HMI_RVIZ_RATIO              RViz width ratio inside HMI container (default: 30)
   APS_HMI_MODE                    single/compose (default: single)
-  APS_HMI_RVIZ_CONFIG_NAME        RViz config filename under autoware_launch/rviz (default: autoware_minimal_fullscreen.rviz)
+  APS_HMI_RVIZ_CONFIG_NAME        RViz config filename under autoware_launch/rviz (default: autoware_hmi_startup.rviz)
   APS_HMI_TARGET_MONITOR          xrandr monitor name or "primary" (default: primary)
   APS_HMI_LAYOUT_DIRECTION        frontend_left/frontend_right (default: frontend_left)
   APS_HMI_WEBENGINE_GPU           true/false, forwarded via environment (default: false)
@@ -47,6 +47,8 @@ Environment overrides:
   APS_HMI_SKIP_UI_CHECK           true/false skip local UI reachability check (default: false)
   APS_HMI_LOADING_GATE_SLOW_SEC   Seconds before Loading APS switches to delayed state (default: 90)
   APS_HMI_LOADING_GATE_WATCHDOG_LOG_SEC Seconds between repeated loading gate warnings (default: 15)
+  APS_HMI_LOG_ROTATE_MAX_BYTES    Rotate active HMI/Autoware logs above this size before launch (default: 104857600; <=0 disables)
+  APS_HMI_LOG_ROTATE_KEEP         Number of rotated timestamped logs to keep per file (default: 0, keep all)
   APS_HMI_USE_SETUP_ENV_CACHE     true/false use precomputed ROS setup env (default: false)
   APS_HMI_SETUP_ENV_CACHE         Sourceable env cache path (default: $APS_HMI_TEST_ROOT/.cache/autoware_setup_env.bash)
   APS_HMI_IMPORT_SHELL_ROS_ENV    true/false import ROS env from ~/.bashrc when needed
@@ -61,6 +63,8 @@ Environment overrides:
   APS_AUTOWARE_SENSOR_CONFIG_PROFILE sensor_config_profile override (default: aps998)
   APS_AUTOWARE_LANELET2_MAP_FILE  lanelet2 map file override (default: frontway2.osm)
   APS_AUTOWARE_POINTCLOUD_MAP_FILE pointcloud map file override (default: front.pcd)
+  APS_AUTOWARE_LAUNCH_MAP         launch_map override for main Autoware (default: true)
+  APS_AUTOWARE_ENSURE_MAP_COMPONENTS ensure_map_components override for main Autoware (default: true)
 
 Examples:
   bash /root/autoware.APS/scripts/start_autoware_hmi.sh
@@ -91,11 +95,13 @@ WAIT_HMI_SHELL_SEC="${APS_HMI_WAIT_SHELL_SEC:-30}"
 UI_WAIT_MODE="$(printf '%s' "${APS_HMI_UI_WAIT_MODE:-async}" | tr '[:upper:]' '[:lower:]')"
 LOADING_GATE_SLOW_SEC="${APS_HMI_LOADING_GATE_SLOW_SEC:-90}"
 LOADING_GATE_WATCHDOG_LOG_SEC="${APS_HMI_LOADING_GATE_WATCHDOG_LOG_SEC:-15}"
+LOG_ROTATE_MAX_BYTES="${APS_HMI_LOG_ROTATE_MAX_BYTES:-104857600}"
+LOG_ROTATE_KEEP="${APS_HMI_LOG_ROTATE_KEEP:-0}"
 FULLSCREEN="${APS_HMI_FULLSCREEN:-true}"
 RVIZ_RATIO="${APS_HMI_RVIZ_RATIO:-30}"
 WINDOW_TITLE="${APS_HMI_WINDOW_TITLE:-APS HMI Container}"
 HMI_MODE="$(printf '%s' "${APS_HMI_MODE:-single}" | tr '[:upper:]' '[:lower:]')"
-RVIZ_CONFIG_NAME="${APS_HMI_RVIZ_CONFIG_NAME:-autoware_minimal_fullscreen.rviz}"
+RVIZ_CONFIG_NAME="${APS_HMI_RVIZ_CONFIG_NAME:-autoware_hmi_startup.rviz}"
 TARGET_MONITOR="${APS_HMI_TARGET_MONITOR:-primary}"
 LAYOUT_DIRECTION="${APS_HMI_LAYOUT_DIRECTION:-frontend_left}"
 WEBENGINE_GPU="${APS_HMI_WEBENGINE_GPU:-false}"
@@ -120,6 +126,8 @@ AUTOWARE_SENSOR_MODEL="${APS_AUTOWARE_SENSOR_MODEL:-aps_sensor_kit}"
 AUTOWARE_SENSOR_CONFIG_PROFILE="${APS_AUTOWARE_SENSOR_CONFIG_PROFILE:-aps998}"
 AUTOWARE_LANELET2_MAP_FILE="${APS_AUTOWARE_LANELET2_MAP_FILE:-frontway2.osm}"
 AUTOWARE_POINTCLOUD_MAP_FILE="${APS_AUTOWARE_POINTCLOUD_MAP_FILE:-front.pcd}"
+AUTOWARE_LAUNCH_MAP="${APS_AUTOWARE_LAUNCH_MAP:-true}"
+AUTOWARE_ENSURE_MAP_COMPONENTS="${APS_AUTOWARE_ENSURE_MAP_COMPONENTS:-true}"
 
 mkdir -p "${PID_DIR}" "${LOG_DIR}" "${ROS_DIR}" "${ROS_DIR}/log" "${WEBENGINE_CACHE_DIR}"
 
@@ -196,6 +204,39 @@ wait_for_hmi_shell() {
   echo "[WARN] native HMI shell did not become ready within ${wait_sec}s; continuing with Autoware launch"
 }
 
+rotate_log_file_if_large() {
+  local log_file="$1"
+
+  if [[ ! "${LOG_ROTATE_MAX_BYTES}" =~ ^[0-9]+$ || "${LOG_ROTATE_MAX_BYTES}" -le 0 ]]; then
+    return 0
+  fi
+  if [[ ! -f "${log_file}" ]]; then
+    return 0
+  fi
+
+  local size
+  size="$(stat -c '%s' "${log_file}" 2>/dev/null || echo 0)"
+  if [[ ! "${size}" =~ ^[0-9]+$ || "${size}" -lt "${LOG_ROTATE_MAX_BYTES}" ]]; then
+    return 0
+  fi
+
+  local rotated_file
+  rotated_file="${log_file}.$(date +%Y%m%d-%H%M%S)"
+  mv -- "${log_file}" "${rotated_file}"
+  : > "${log_file}"
+  echo "[INFO] rotated log: ${log_file} -> ${rotated_file} (${size} bytes)"
+
+  if [[ ! "${LOG_ROTATE_KEEP}" =~ ^[0-9]+$ || "${LOG_ROTATE_KEEP}" -le 0 ]]; then
+    return 0
+  fi
+
+  mapfile -t old_logs < <(find "$(dirname "${log_file}")" -maxdepth 1 -type f -name "$(basename "${log_file}").20*" -printf '%T@ %p\n' 2>/dev/null | sort -rn | awk -v keep="${LOG_ROTATE_KEEP}" 'NR > keep {print $2}')
+  for old_log in "${old_logs[@]}"; do
+    echo "[INFO] removing old rotated log: ${old_log}"
+    rm -f -- "${old_log}"
+  done
+}
+
 frontend_host="$(python3 - "${FRONTEND_URL}" <<'PY'
 import sys
 from urllib.parse import urlparse
@@ -257,11 +298,15 @@ echo "[INFO] sensor_model: ${AUTOWARE_SENSOR_MODEL}"
 echo "[INFO] sensor_config_profile: ${AUTOWARE_SENSOR_CONFIG_PROFILE}"
 echo "[INFO] lanelet2_map_file: ${AUTOWARE_LANELET2_MAP_FILE}"
 echo "[INFO] pointcloud_map_file: ${AUTOWARE_POINTCLOUD_MAP_FILE}"
+echo "[INFO] launch_map: ${AUTOWARE_LAUNCH_MAP}"
+echo "[INFO] ensure_map_components: ${AUTOWARE_ENSURE_MAP_COMPONENTS}"
 if [[ -n "${AUTOWARE_MAP_PATH}" ]]; then
   echo "[INFO] map_path: ${AUTOWARE_MAP_PATH}"
 fi
 
 bash "${ROOT_DIR}/scripts/stop_autoware_hmi.sh" >/dev/null 2>&1 || true
+rotate_log_file_if_large "${HMI_LOG_FILE}"
+rotate_log_file_if_large "${AUTOWARE_LOG_FILE}"
 
 MAIN_HMI_BIN="${ROOT_DIR}/install/aps_hmi_container/lib/aps_hmi_container/aps_hmi_container"
 MAIN_RVIZ_CONFIG="${MAIN_LAUNCH_REPO}/autoware_launch/rviz/${RVIZ_CONFIG_NAME}"
@@ -341,6 +386,8 @@ AUTOWARE_ARGS=(
   "sensor_config_profile:=${AUTOWARE_SENSOR_CONFIG_PROFILE}"
   "lanelet2_map_file:=${AUTOWARE_LANELET2_MAP_FILE}"
   "pointcloud_map_file:=${AUTOWARE_POINTCLOUD_MAP_FILE}"
+  "launch_map:=${AUTOWARE_LAUNCH_MAP}"
+  "ensure_map_components:=${AUTOWARE_ENSURE_MAP_COMPONENTS}"
   "launch_hmi_container:=false"
   "hmi_single_container:=${HMI_SINGLE_CONTAINER}"
   "hmi_compose_layout:=${HMI_COMPOSE_LAYOUT}"
