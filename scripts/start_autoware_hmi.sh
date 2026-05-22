@@ -187,7 +187,8 @@ wait_for_hmi_shell() {
   fi
 
   echo "[INFO] waiting up to ${wait_sec}s for native HMI shell before Autoware launch"
-  for _ in $(seq 1 "${wait_sec}"); do
+  local attempts=$((wait_sec * 5))
+  for _ in $(seq 1 "${attempts}"); do
     if [[ -s "${HMI_SHELL_WID_FILE}" ]]; then
       echo "[INFO] native HMI shell is ready"
       return 0
@@ -198,7 +199,7 @@ wait_for_hmi_shell() {
       rm -f "${HMI_PID_FILE}" "${HMI_PGID_FILE}"
       exit 1
     fi
-    sleep 1
+    sleep 0.2
   done
 
   echo "[WARN] native HMI shell did not become ready within ${wait_sec}s; continuing with Autoware launch"
@@ -424,7 +425,7 @@ exec ${HMI_LAUNCH_PREFIX} \"${HMI_BIN}\" \
     echo "${hmi_pgid}" > "${HMI_PGID_FILE}"
   fi
 
-  sleep 2
+  sleep 0.2
   if ! kill -0 "${hmi_pid}" >/dev/null 2>&1; then
     echo "[ERROR] standalone aps_hmi_container failed to stay up. Last log lines:" >&2
     tail -n 80 "${HMI_LOG_FILE}" >&2 || true
