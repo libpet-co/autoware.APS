@@ -237,6 +237,57 @@ rotate_log_file_if_large() {
   done
 }
 
+pid_file_has_live_hmi_target() {
+  local pid_file="$1"
+  local pid=""
+  local cmd=""
+
+  [[ -f "${pid_file}" ]] || return 1
+  pid="$(cat "${pid_file}" 2>/dev/null || true)"
+  [[ "${pid}" =~ ^[0-9]+$ ]] || return 1
+
+  cmd="$(ps -p "${pid}" -o args= 2>/dev/null || true)"
+  [[ -n "${cmd}" ]] || return 1
+
+  case "${cmd}" in
+    *aps_hmi_container*|*"ros2 launch autoware_launch autoware.launch.xml"*)
+      return 0
+      ;;
+  esac
+
+  return 1
+}
+
+hmi_stack_process_running() {
+  local pid_file=""
+
+  for pid_file in \
+    "${AUTOWARE_PID_FILE}" \
+    "${HMI_PID_FILE}" \
+    "${PID_DIR}/hmi_frontend.pid" \
+    "${PID_DIR}/rviz_user.pid"; do
+    if pid_file_has_live_hmi_target "${pid_file}"; then
+      return 0
+    fi
+  done
+
+  pgrep -f 'aps_hmi_container|ros2 launch autoware_launch autoware.launch.xml' >/dev/null 2>&1
+}
+
+clear_stale_hmi_runtime_files() {
+  rm -f \
+    "${AUTOWARE_PID_FILE}" \
+    "${AUTOWARE_PGID_FILE}" \
+    "${HMI_PID_FILE}" \
+    "${HMI_PGID_FILE}" \
+    "${HMI_SHELL_WID_FILE}" \
+    "${PID_DIR}/frontend_host.wid" \
+    "${PID_DIR}/hmi_frontend.pid" \
+    "${PID_DIR}/hmi_frontend.render_ready" \
+    "${PID_DIR}/rviz_host.wid" \
+    "${PID_DIR}/rviz_user.pid"
+}
+
 frontend_host="$(python3 - "${FRONTEND_URL}" <<'PY'
 import sys
 from urllib.parse import urlparse
@@ -304,7 +355,12 @@ if [[ -n "${AUTOWARE_MAP_PATH}" ]]; then
   echo "[INFO] map_path: ${AUTOWARE_MAP_PATH}"
 fi
 
-bash "${ROOT_DIR}/scripts/stop_autoware_hmi.sh" >/dev/null 2>&1 || true
+if hmi_stack_process_running; then
+  bash "${ROOT_DIR}/scripts/stop_autoware_hmi.sh" >/dev/null 2>&1 || true
+else
+  echo "[INFO] no existing HMI stack process detected; skipping stop cleanup"
+  clear_stale_hmi_runtime_files
+fi
 rotate_log_file_if_large "${HMI_LOG_FILE}"
 rotate_log_file_if_large "${AUTOWARE_LOG_FILE}"
 
