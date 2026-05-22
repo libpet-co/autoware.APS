@@ -39,7 +39,7 @@ repositories:
   universe/autoware_universe.APS:
     type: git
     url: https://github.com/libpet-co/autoware_universe.APS.git
-    version: airy_test
+    version: localization_check
   universe/external/tier4_ad_api_adaptor: # TODO(TIER IV): Migrate to AD API and remove this repository entry.
     type: git
     url: https://github.com/tier4/tier4_ad_api_adaptor.git
@@ -97,11 +97,11 @@ repositories:
   launcher/autoware_launch_APS:
     type: git
     url: git@github.com:libpet-co/autoware_launch_APS.git
-    version: speed_test
+    version: hmi_container_dev
   launcher/autoware_launch_APS/vehicle/aps_vehicle_launch/aps_vehicle_launch:
     type: git
     url: git@github.com:libpet-co/aps_vehicle_launch.git
-    version: bf2e47ead1364012c6a93490aa2f48247434f792
+    version: fix/explicit-startup-motor-enable
   # sensor_component
   sensor_component/external/aps_cam:
     type: git
