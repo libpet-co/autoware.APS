@@ -68,7 +68,7 @@ Environment overrides:
   APS_AUTOWARE_POINTCLOUD_MAP_FILE pointcloud map file override (default: front.pcd)
   APS_AUTOWARE_LAUNCH_MAP         launch_map override for main Autoware (default: true)
   APS_AUTOWARE_ENSURE_MAP_COMPONENTS ensure_map_components override for main Autoware (default: true)
-  APS_AUTOWARE_LAUNCH_CAMERA_DRIVER launch_camera_driver override for main Autoware (default: true)
+  APS_AUTOWARE_LAUNCH_CAMERA_DRIVER launch_camera_driver override for main Autoware (default: false)
 
 Examples:
   bash /root/autoware.APS/scripts/start_autoware_hmi.sh
@@ -135,7 +135,7 @@ AUTOWARE_LANELET2_MAP_FILE="${APS_AUTOWARE_LANELET2_MAP_FILE:-frontway2.osm}"
 AUTOWARE_POINTCLOUD_MAP_FILE="${APS_AUTOWARE_POINTCLOUD_MAP_FILE:-front.pcd}"
 AUTOWARE_LAUNCH_MAP="${APS_AUTOWARE_LAUNCH_MAP:-true}"
 AUTOWARE_ENSURE_MAP_COMPONENTS="${APS_AUTOWARE_ENSURE_MAP_COMPONENTS:-true}"
-AUTOWARE_LAUNCH_CAMERA_DRIVER="${APS_AUTOWARE_LAUNCH_CAMERA_DRIVER:-true}"
+AUTOWARE_LAUNCH_CAMERA_DRIVER="${APS_AUTOWARE_LAUNCH_CAMERA_DRIVER:-false}"
 
 mkdir -p "${PID_DIR}" "${LOG_DIR}" "${ROS_DIR}" "${ROS_DIR}/log" "${WEBENGINE_CACHE_DIR}"
 
