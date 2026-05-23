@@ -42,7 +42,9 @@ Environment overrides:
   APS_HMI_LAUNCH_PREFIX           Optional shell prefix for standalone HMI, e.g. 'taskset -c 2-3 nice -n 5'
   APS_AUTOWARE_LAUNCH_PREFIX      Optional shell prefix for autoware.launch.xml, e.g. 'taskset -c 0-1'
   APS_HMI_WAIT_UI_SEC             Max seconds waiting for local UI URL (default: 60)
+  APS_HMI_WAIT_DISPLAY_SEC        Max seconds waiting for X11 display access (default: 45)
   APS_HMI_WAIT_SHELL_SEC          Max seconds waiting for the native HMI shell before Autoware launch (default: 30)
+  APS_HMI_START_AUTOWARE_BEFORE_DISPLAY true/false start Autoware before X11/HMI display wait (default: false)
   APS_HMI_UI_WAIT_MODE            block/async/skip local UI precheck mode (default: async)
   APS_HMI_SKIP_UI_CHECK           true/false skip local UI reachability check (default: false)
   APS_HMI_LOADING_GATE_SLOW_SEC   Seconds before Loading APS switches to delayed state (default: 90)
@@ -54,6 +56,7 @@ Environment overrides:
   APS_HMI_IMPORT_SHELL_ROS_ENV    true/false import ROS env from ~/.bashrc when needed
   APS_HMI_DISPLAY                 Explicit X11 display override (default: auto-detect, usually :0)
   APS_HMI_XAUTHORITY              Explicit X11 authority file override
+  APS_AUTOWARE_LAUNCH_DEBUG       true/false pass --debug to ros2 launch (default: false)
   APS_ROS_DOMAIN_ID               Optional ROS_DOMAIN_ID override
   APS_CYCLONEDDS_CONFIG           CycloneDDS XML path (default: $HOME/cyclonedds.xml)
   APS_AUTOWARE_USE_SIM_TIME       Autoware use_sim_time value (default: false)
@@ -65,6 +68,7 @@ Environment overrides:
   APS_AUTOWARE_POINTCLOUD_MAP_FILE pointcloud map file override (default: front.pcd)
   APS_AUTOWARE_LAUNCH_MAP         launch_map override for main Autoware (default: true)
   APS_AUTOWARE_ENSURE_MAP_COMPONENTS ensure_map_components override for main Autoware (default: true)
+  APS_AUTOWARE_LAUNCH_CAMERA_DRIVER launch_camera_driver override for main Autoware (default: true)
 
 Examples:
   bash /root/autoware.APS/scripts/start_autoware_hmi.sh
@@ -91,7 +95,9 @@ HMI_PID_FILE="${PID_DIR}/hmi_container.pid"
 HMI_PGID_FILE="${PID_DIR}/hmi_container.pgid"
 HMI_SHELL_WID_FILE="${PID_DIR}/hmi_shell.wid"
 WAIT_UI_SEC="${APS_HMI_WAIT_UI_SEC:-60}"
+WAIT_DISPLAY_SEC="${APS_HMI_WAIT_DISPLAY_SEC:-45}"
 WAIT_HMI_SHELL_SEC="${APS_HMI_WAIT_SHELL_SEC:-30}"
+START_AUTOWARE_BEFORE_DISPLAY="$(printf '%s' "${APS_HMI_START_AUTOWARE_BEFORE_DISPLAY:-false}" | tr '[:upper:]' '[:lower:]')"
 UI_WAIT_MODE="$(printf '%s' "${APS_HMI_UI_WAIT_MODE:-async}" | tr '[:upper:]' '[:lower:]')"
 LOADING_GATE_SLOW_SEC="${APS_HMI_LOADING_GATE_SLOW_SEC:-90}"
 LOADING_GATE_WATCHDOG_LOG_SEC="${APS_HMI_LOADING_GATE_WATCHDOG_LOG_SEC:-15}"
@@ -109,6 +115,7 @@ WEB_ZOOM_FACTOR="${APS_HMI_WEB_ZOOM_FACTOR:-1.25}"
 FORCE_SOFTWARE_GL="${APS_HMI_FORCE_SOFTWARE_GL:-false}"
 HMI_LAUNCH_PREFIX="${APS_HMI_LAUNCH_PREFIX:-}"
 AUTOWARE_LAUNCH_PREFIX="${APS_AUTOWARE_LAUNCH_PREFIX:-}"
+AUTOWARE_LAUNCH_DEBUG="$(printf %s "${APS_AUTOWARE_LAUNCH_DEBUG:-false}" | tr [:upper:] [:lower:])"
 ROS_DOMAIN_ID_VALUE="${APS_ROS_DOMAIN_ID:-${ROS_DOMAIN_ID:-}}"
 ROS_DOMAIN_ID_DISPLAY="unset (ROS default 0)"
 ROS_DOMAIN_ID_EXPORT_CMD=""
@@ -128,6 +135,7 @@ AUTOWARE_LANELET2_MAP_FILE="${APS_AUTOWARE_LANELET2_MAP_FILE:-frontway2.osm}"
 AUTOWARE_POINTCLOUD_MAP_FILE="${APS_AUTOWARE_POINTCLOUD_MAP_FILE:-front.pcd}"
 AUTOWARE_LAUNCH_MAP="${APS_AUTOWARE_LAUNCH_MAP:-true}"
 AUTOWARE_ENSURE_MAP_COMPONENTS="${APS_AUTOWARE_ENSURE_MAP_COMPONENTS:-true}"
+AUTOWARE_LAUNCH_CAMERA_DRIVER="${APS_AUTOWARE_LAUNCH_CAMERA_DRIVER:-true}"
 
 mkdir -p "${PID_DIR}" "${LOG_DIR}" "${ROS_DIR}" "${ROS_DIR}/log" "${WEBENGINE_CACHE_DIR}"
 
@@ -169,8 +177,6 @@ else
   exit 1
 fi
 
-ensure_hmi_display_access
-
 http_ready() {
   local url="$1"
   local code
@@ -203,6 +209,30 @@ wait_for_hmi_shell() {
   done
 
   echo "[WARN] native HMI shell did not become ready within ${wait_sec}s; continuing with Autoware launch"
+}
+
+wait_for_hmi_display_access() {
+  local wait_sec="$1"
+  local attempts=1
+  local last_log
+
+  if [[ "${wait_sec}" =~ ^[0-9]+$ && "${wait_sec}" -gt 0 ]]; then
+    attempts=$((wait_sec * 5))
+  fi
+
+  last_log="$(mktemp)"
+  for _ in $(seq 1 "${attempts}"); do
+    if ensure_hmi_display_access >"${last_log}" 2>&1; then
+      cat "${last_log}"
+      rm -f "${last_log}"
+      return 0
+    fi
+    sleep 0.2
+  done
+
+  cat "${last_log}" >&2 || true
+  rm -f "${last_log}"
+  return 1
 }
 
 rotate_log_file_if_large() {
@@ -289,6 +319,87 @@ clear_stale_hmi_runtime_files() {
     "${PID_DIR}/rviz_user.pid"
 }
 
+autoware_started="false"
+start_autoware_launch() {
+  local -a autoware_args=(
+    "use_sim_time:=${AUTOWARE_USE_SIM_TIME}"
+    "vehicle_model:=${AUTOWARE_VEHICLE_MODEL}"
+    "sensor_model:=${AUTOWARE_SENSOR_MODEL}"
+    "sensor_config_profile:=${AUTOWARE_SENSOR_CONFIG_PROFILE}"
+    "lanelet2_map_file:=${AUTOWARE_LANELET2_MAP_FILE}"
+    "pointcloud_map_file:=${AUTOWARE_POINTCLOUD_MAP_FILE}"
+    "launch_map:=${AUTOWARE_LAUNCH_MAP}"
+    "ensure_map_components:=${AUTOWARE_ENSURE_MAP_COMPONENTS}"
+    "launch_camera_driver:=${AUTOWARE_LAUNCH_CAMERA_DRIVER}"
+    "launch_hmi_container:=false"
+    "hmi_single_container:=${HMI_SINGLE_CONTAINER}"
+    "hmi_compose_layout:=${HMI_COMPOSE_LAYOUT}"
+    "hmi_single_fullscreen:=${FULLSCREEN}"
+    "rviz_fullscreen:=false"
+    "hmi_frontend_url:=${FRONTEND_URL}"
+    "hmi_rviz_ratio:=${RVIZ_RATIO}"
+    "hmi_single_window_title:=${WINDOW_TITLE}"
+    "hmi_target_monitor:=${TARGET_MONITOR}"
+    "hmi_layout_direction:=${LAYOUT_DIRECTION}"
+    "hmi_force_software_gl:=${FORCE_SOFTWARE_GL}"
+  )
+  local arg=""
+  local autoware_arg_string=""
+  local autoware_cmd=""
+  local autoware_debug_arg=""
+  local autoware_pid=""
+  local autoware_pgid=""
+
+  if [[ "${AUTOWARE_LAUNCH_DEBUG}" == "true" ]]; then
+    autoware_debug_arg=" --debug"
+  fi
+
+  if [[ -n "${AUTOWARE_MAP_PATH}" ]]; then
+    autoware_args+=("map_path:=${AUTOWARE_MAP_PATH}")
+  fi
+
+  for arg in "$@"; do
+    autoware_args+=("${arg}")
+  done
+
+  for arg in "${autoware_args[@]}"; do
+    autoware_arg_string+=" $(printf '%q' "${arg}")"
+  done
+
+  autoware_cmd="set -euo pipefail; \
+set +u; ${ROS_SETUP_CMD} set -u; \
+mkdir -p \"${ROS_DIR}\" \"${ROS_DIR}/log\"; \
+export ROS_HOME=\"${ROS_DIR}\"; \
+export APS_HMI_PID_DIR=\"${PID_DIR}\"; \
+export APS_HMI_WEBENGINE_GPU=$(printf '%q' "${WEBENGINE_GPU}"); \
+export APS_HMI_WEB_ZOOM_FACTOR=$(printf '%q' "${WEB_ZOOM_FACTOR}"); \
+export APS_HMI_WEBENGINE_CACHE_DIR=$(printf '%q' "${WEBENGINE_CACHE_DIR}"); \
+${ROS_DOMAIN_ID_EXPORT_CMD}\
+export RMW_IMPLEMENTATION=\"\${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}\"; \
+if [[ -z \"\${CYCLONEDDS_URI:-}\" && -f \"${CYCLONEDDS_CONFIG}\" ]]; then export CYCLONEDDS_URI=\"file://${CYCLONEDDS_CONFIG}\"; fi; \
+exec ${AUTOWARE_LAUNCH_PREFIX} ros2 launch${autoware_debug_arg} autoware_launch autoware.launch.xml${autoware_arg_string}"
+
+  echo "[INFO] starting autoware.launch.xml..."
+  nohup setsid bash -lc "${autoware_cmd}" >>"${AUTOWARE_LOG_FILE}" 2>&1 &
+  autoware_pid=$!
+  echo "${autoware_pid}" > "${AUTOWARE_PID_FILE}"
+  autoware_pgid="$(ps -o pgid= -p "${autoware_pid}" 2>/dev/null | tr -d ' ' || true)"
+  if [[ -n "${autoware_pgid}" ]]; then
+    echo "${autoware_pgid}" > "${AUTOWARE_PGID_FILE}"
+  fi
+
+  sleep 2
+  if ! kill -0 "${autoware_pid}" >/dev/null 2>&1; then
+    echo "[ERROR] autoware.launch.xml failed to stay up. Last log lines:" >&2
+    tail -n 80 "${AUTOWARE_LOG_FILE}" >&2 || true
+    rm -f "${AUTOWARE_PID_FILE}" "${AUTOWARE_PGID_FILE}"
+    bash "${ROOT_DIR}/scripts/stop_autoware_hmi.sh" >/dev/null 2>&1 || true
+    exit 1
+  fi
+
+  autoware_started="true"
+}
+
 frontend_host="$(python3 - "${FRONTEND_URL}" <<'PY'
 import sys
 from urllib.parse import urlparse
@@ -334,7 +445,9 @@ echo "[INFO] HMI rviz ratio: ${RVIZ_RATIO}"
 echo "[INFO] HMI WebEngine GPU: ${WEBENGINE_GPU}"
 echo "[INFO] HMI web zoom factor: ${WEB_ZOOM_FACTOR}"
 echo "[INFO] HMI UI wait mode: ${UI_WAIT_MODE}"
+echo "[INFO] HMI display wait sec: ${WAIT_DISPLAY_SEC}"
 echo "[INFO] HMI shell wait sec: ${WAIT_HMI_SHELL_SEC}"
+echo "[INFO] start Autoware before display: ${START_AUTOWARE_BEFORE_DISPLAY}"
 echo "[INFO] HMI loading gate slow sec: ${LOADING_GATE_SLOW_SEC}"
 echo "[INFO] HMI loading gate watchdog log sec: ${LOADING_GATE_WATCHDOG_LOG_SEC}"
 echo "[INFO] ROS setup env: ${ROS_SETUP_SOURCE_DESC}"
@@ -344,6 +457,7 @@ fi
 if [[ -n "${AUTOWARE_LAUNCH_PREFIX}" ]]; then
   echo "[INFO] autoware launch prefix: ${AUTOWARE_LAUNCH_PREFIX}"
 fi
+echo "[INFO] autoware launch debug: ${AUTOWARE_LAUNCH_DEBUG}"
 echo "[INFO] Autoware use_sim_time: ${AUTOWARE_USE_SIM_TIME}"
 echo "[INFO] vehicle_model: ${AUTOWARE_VEHICLE_MODEL}"
 echo "[INFO] sensor_model: ${AUTOWARE_SENSOR_MODEL}"
@@ -351,6 +465,7 @@ echo "[INFO] sensor_config_profile: ${AUTOWARE_SENSOR_CONFIG_PROFILE}"
 echo "[INFO] lanelet2_map_file: ${AUTOWARE_LANELET2_MAP_FILE}"
 echo "[INFO] pointcloud_map_file: ${AUTOWARE_POINTCLOUD_MAP_FILE}"
 echo "[INFO] launch_map: ${AUTOWARE_LAUNCH_MAP}"
+echo "[INFO] launch_camera_driver: ${AUTOWARE_LAUNCH_CAMERA_DRIVER}"
 echo "[INFO] ensure_map_components: ${AUTOWARE_ENSURE_MAP_COMPONENTS}"
 if [[ -n "${AUTOWARE_MAP_PATH}" ]]; then
   echo "[INFO] map_path: ${AUTOWARE_MAP_PATH}"
@@ -365,6 +480,10 @@ fi
 rotate_log_file_if_large "${HMI_LOG_FILE}"
 rotate_log_file_if_large "${AUTOWARE_LOG_FILE}"
 
+if [[ "${START_AUTOWARE_BEFORE_DISPLAY}" == "true" ]]; then
+  start_autoware_launch "$@"
+fi
+
 MAIN_HMI_BIN="${ROOT_DIR}/install/aps_hmi_container/lib/aps_hmi_container/aps_hmi_container"
 MAIN_RVIZ_CONFIG="${MAIN_LAUNCH_REPO}/autoware_launch/rviz/${RVIZ_CONFIG_NAME}"
 
@@ -373,6 +492,8 @@ RVIZ_CONFIG="${MAIN_RVIZ_CONFIG}"
 echo "[INFO] HMI artifacts: using main workspace (${ROOT_DIR})"
 
 if [[ "${HMI_MODE}" == "single" ]]; then
+  wait_for_hmi_display_access "${WAIT_DISPLAY_SEC}"
+
   if [[ ! -x "${HMI_BIN}" ]]; then
     echo "[ERROR] missing HMI container binary: ${HMI_BIN}" >&2
     echo "Build it with: colcon build --packages-select aps_hmi_container autoware_launch --cmake-force-configure --symlink-install --allow-overriding autoware_launch --cmake-args -DBUILD_TESTING=OFF" >&2
@@ -430,76 +551,17 @@ exec ${HMI_LAUNCH_PREFIX} \"${HMI_BIN}\" \
     echo "[ERROR] standalone aps_hmi_container failed to stay up. Last log lines:" >&2
     tail -n 80 "${HMI_LOG_FILE}" >&2 || true
     rm -f "${HMI_PID_FILE}" "${HMI_PGID_FILE}"
+    if [[ "${autoware_started}" == "true" ]]; then
+      bash "${ROOT_DIR}/scripts/stop_autoware_hmi.sh" >/dev/null 2>&1 || true
+    fi
     exit 1
   fi
 
   wait_for_hmi_shell "${hmi_pid}" "${WAIT_HMI_SHELL_SEC}"
 fi
 
-AUTOWARE_ARGS=(
-  "use_sim_time:=${AUTOWARE_USE_SIM_TIME}"
-  "vehicle_model:=${AUTOWARE_VEHICLE_MODEL}"
-  "sensor_model:=${AUTOWARE_SENSOR_MODEL}"
-  "sensor_config_profile:=${AUTOWARE_SENSOR_CONFIG_PROFILE}"
-  "lanelet2_map_file:=${AUTOWARE_LANELET2_MAP_FILE}"
-  "pointcloud_map_file:=${AUTOWARE_POINTCLOUD_MAP_FILE}"
-  "launch_map:=${AUTOWARE_LAUNCH_MAP}"
-  "ensure_map_components:=${AUTOWARE_ENSURE_MAP_COMPONENTS}"
-  "launch_hmi_container:=false"
-  "hmi_single_container:=${HMI_SINGLE_CONTAINER}"
-  "hmi_compose_layout:=${HMI_COMPOSE_LAYOUT}"
-  "hmi_single_fullscreen:=${FULLSCREEN}"
-  "rviz_fullscreen:=false"
-  "hmi_frontend_url:=${FRONTEND_URL}"
-  "hmi_rviz_ratio:=${RVIZ_RATIO}"
-  "hmi_single_window_title:=${WINDOW_TITLE}"
-  "hmi_target_monitor:=${TARGET_MONITOR}"
-  "hmi_layout_direction:=${LAYOUT_DIRECTION}"
-  "hmi_force_software_gl:=${FORCE_SOFTWARE_GL}"
-)
-
-if [[ -n "${AUTOWARE_MAP_PATH}" ]]; then
-  AUTOWARE_ARGS+=("map_path:=${AUTOWARE_MAP_PATH}")
-fi
-
-for arg in "$@"; do
-  AUTOWARE_ARGS+=("${arg}")
-done
-
-AUTOWARE_ARG_STRING=""
-for arg in "${AUTOWARE_ARGS[@]}"; do
-  AUTOWARE_ARG_STRING+=" $(printf '%q' "${arg}")"
-done
-
-AUTOWARE_CMD="set -euo pipefail; \
-set +u; ${ROS_SETUP_CMD} set -u; \
-mkdir -p \"${ROS_DIR}\" \"${ROS_DIR}/log\"; \
-export ROS_HOME=\"${ROS_DIR}\"; \
-export APS_HMI_PID_DIR=\"${PID_DIR}\"; \
-export APS_HMI_WEBENGINE_GPU=$(printf '%q' "${WEBENGINE_GPU}"); \
-export APS_HMI_WEB_ZOOM_FACTOR=$(printf '%q' "${WEB_ZOOM_FACTOR}"); \
-export APS_HMI_WEBENGINE_CACHE_DIR=$(printf '%q' "${WEBENGINE_CACHE_DIR}"); \
-${ROS_DOMAIN_ID_EXPORT_CMD}\
-export RMW_IMPLEMENTATION=\"\${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}\"; \
-if [[ -z \"\${CYCLONEDDS_URI:-}\" && -f \"${CYCLONEDDS_CONFIG}\" ]]; then export CYCLONEDDS_URI=\"file://${CYCLONEDDS_CONFIG}\"; fi; \
-exec ${AUTOWARE_LAUNCH_PREFIX} ros2 launch autoware_launch autoware.launch.xml${AUTOWARE_ARG_STRING}"
-
-echo "[INFO] starting autoware.launch.xml..."
-nohup setsid bash -lc "${AUTOWARE_CMD}" >>"${AUTOWARE_LOG_FILE}" 2>&1 &
-autoware_pid=$!
-echo "${autoware_pid}" > "${AUTOWARE_PID_FILE}"
-autoware_pgid="$(ps -o pgid= -p "${autoware_pid}" 2>/dev/null | tr -d ' ' || true)"
-if [[ -n "${autoware_pgid}" ]]; then
-  echo "${autoware_pgid}" > "${AUTOWARE_PGID_FILE}"
-fi
-
-sleep 2
-if ! kill -0 "${autoware_pid}" >/dev/null 2>&1; then
-  echo "[ERROR] autoware.launch.xml failed to stay up. Last log lines:" >&2
-  tail -n 80 "${AUTOWARE_LOG_FILE}" >&2 || true
-  rm -f "${AUTOWARE_PID_FILE}" "${AUTOWARE_PGID_FILE}"
-  bash "${ROOT_DIR}/scripts/stop_autoware_hmi.sh" >/dev/null 2>&1 || true
-  exit 1
+if [[ "${autoware_started}" != "true" ]]; then
+  start_autoware_launch "$@"
 fi
 
 echo "[INFO] started:"
