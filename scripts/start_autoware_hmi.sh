@@ -57,6 +57,7 @@ Environment overrides:
   APS_HMI_DISPLAY                 Explicit X11 display override (default: auto-detect, usually :0)
   APS_HMI_XAUTHORITY              Explicit X11 authority file override
   APS_AUTOWARE_LAUNCH_DEBUG       true/false pass --debug to ros2 launch (default: false)
+  APS_AUTOWARE_SKIP_INCLUDE_ARG_CHECK true/false skip ROS launch include preflight argument scan (default: true)
   APS_ROS_DOMAIN_ID               Optional ROS_DOMAIN_ID override
   APS_CYCLONEDDS_CONFIG           CycloneDDS XML path (default: $HOME/cyclonedds.xml)
   APS_AUTOWARE_USE_SIM_TIME       Autoware use_sim_time value (default: false)
@@ -97,6 +98,9 @@ HMI_LOG_FILE="${LOG_DIR}/hmi_container.log"
 HMI_PID_FILE="${PID_DIR}/hmi_container.pid"
 HMI_PGID_FILE="${PID_DIR}/hmi_container.pgid"
 HMI_SHELL_WID_FILE="${PID_DIR}/hmi_shell.wid"
+RVIZ_PRESTART_PID_FILE="${PID_DIR}/rviz_user_prestart.pid"
+RVIZ_PRESTART_PGID_FILE="${PID_DIR}/rviz_user_prestart.pgid"
+PRESTART_RVIZ="$(printf '%s' "${APS_HMI_PRESTART_RVIZ:-true}" | tr '[:upper:]' '[:lower:]')"
 WAIT_UI_SEC="${APS_HMI_WAIT_UI_SEC:-60}"
 WAIT_DISPLAY_SEC="${APS_HMI_WAIT_DISPLAY_SEC:-45}"
 WAIT_HMI_SHELL_SEC="${APS_HMI_WAIT_SHELL_SEC:-30}"
@@ -119,6 +123,17 @@ FORCE_SOFTWARE_GL="${APS_HMI_FORCE_SOFTWARE_GL:-false}"
 HMI_LAUNCH_PREFIX="${APS_HMI_LAUNCH_PREFIX:-}"
 AUTOWARE_LAUNCH_PREFIX="${APS_AUTOWARE_LAUNCH_PREFIX:-}"
 AUTOWARE_LAUNCH_DEBUG="$(printf %s "${APS_AUTOWARE_LAUNCH_DEBUG:-false}" | tr [:upper:] [:lower:])"
+AUTOWARE_SKIP_INCLUDE_ARG_CHECK="$(printf '%s' "${APS_AUTOWARE_SKIP_INCLUDE_ARG_CHECK:-true}" | tr '[:upper:]' '[:lower:]')"
+AUTOWARE_FAST_LAUNCH_PATH="${ROOT_DIR}/scripts/ros_launch_fast"
+AUTOWARE_FAST_LAUNCH_ENV_CMD=""
+if [[ "${AUTOWARE_SKIP_INCLUDE_ARG_CHECK}" == "true" ]]; then
+  if [[ -r "${AUTOWARE_FAST_LAUNCH_PATH}/sitecustomize.py" ]]; then
+    AUTOWARE_FAST_LAUNCH_ENV_CMD="export APS_FAST_ROS_LAUNCH_INCLUDE=1; export PYTHONPATH=$(printf '%q' "${AUTOWARE_FAST_LAUNCH_PATH}"):\${PYTHONPATH:-}; "
+  else
+    echo "[WARN] ROS launch fast include patch is missing: ${AUTOWARE_FAST_LAUNCH_PATH}/sitecustomize.py" >&2
+    AUTOWARE_SKIP_INCLUDE_ARG_CHECK="false"
+  fi
+fi
 ROS_DOMAIN_ID_VALUE="${APS_ROS_DOMAIN_ID:-${ROS_DOMAIN_ID:-}}"
 ROS_DOMAIN_ID_DISPLAY="unset (ROS default 0)"
 ROS_DOMAIN_ID_EXPORT_CMD=""
@@ -301,6 +316,7 @@ hmi_stack_process_running() {
   for pid_file in \
     "${AUTOWARE_PID_FILE}" \
     "${HMI_PID_FILE}" \
+    "${RVIZ_PRESTART_PID_FILE}" \
     "${PID_DIR}/hmi_frontend.pid" \
     "${PID_DIR}/rviz_user.pid"; do
     if pid_file_has_live_hmi_target "${pid_file}"; then
@@ -318,6 +334,8 @@ clear_stale_hmi_runtime_files() {
     "${HMI_PID_FILE}" \
     "${HMI_PGID_FILE}" \
     "${HMI_SHELL_WID_FILE}" \
+    "${RVIZ_PRESTART_PID_FILE}" \
+    "${RVIZ_PRESTART_PGID_FILE}" \
     "${PID_DIR}/frontend_host.wid" \
     "${PID_DIR}/hmi_frontend.pid" \
     "${PID_DIR}/hmi_frontend.render_ready" \
@@ -386,6 +404,7 @@ export APS_HMI_WEBENGINE_CACHE_DIR=$(printf '%q' "${WEBENGINE_CACHE_DIR}"); \
 ${ROS_DOMAIN_ID_EXPORT_CMD}\
 export RMW_IMPLEMENTATION=\"\${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}\"; \
 if [[ -z \"\${CYCLONEDDS_URI:-}\" && -f \"${CYCLONEDDS_CONFIG}\" ]]; then export CYCLONEDDS_URI=\"file://${CYCLONEDDS_CONFIG}\"; fi; \
+${AUTOWARE_FAST_LAUNCH_ENV_CMD}\
 exec ${AUTOWARE_LAUNCH_PREFIX} ros2 launch${autoware_debug_arg} autoware_launch autoware.launch.xml${autoware_arg_string}"
 
   echo "[INFO] starting autoware.launch.xml..."
@@ -457,6 +476,7 @@ echo "[INFO] HMI UI wait mode: ${UI_WAIT_MODE}"
 echo "[INFO] HMI display wait sec: ${WAIT_DISPLAY_SEC}"
 echo "[INFO] HMI shell wait sec: ${WAIT_HMI_SHELL_SEC}"
 echo "[INFO] start Autoware before display: ${START_AUTOWARE_BEFORE_DISPLAY}"
+echo "[INFO] prestart RViz child: ${PRESTART_RVIZ}"
 echo "[INFO] HMI loading gate slow sec: ${LOADING_GATE_SLOW_SEC}"
 echo "[INFO] HMI loading gate watchdog log sec: ${LOADING_GATE_WATCHDOG_LOG_SEC}"
 echo "[INFO] ROS setup env: ${ROS_SETUP_SOURCE_DESC}"
@@ -467,6 +487,7 @@ if [[ -n "${AUTOWARE_LAUNCH_PREFIX}" ]]; then
   echo "[INFO] autoware launch prefix: ${AUTOWARE_LAUNCH_PREFIX}"
 fi
 echo "[INFO] autoware launch debug: ${AUTOWARE_LAUNCH_DEBUG}"
+echo "[INFO] autoware skip include arg check: ${AUTOWARE_SKIP_INCLUDE_ARG_CHECK}"
 echo "[INFO] Autoware use_sim_time: ${AUTOWARE_USE_SIM_TIME}"
 echo "[INFO] vehicle_model: ${AUTOWARE_VEHICLE_MODEL}"
 echo "[INFO] sensor_model: ${AUTOWARE_SENSOR_MODEL}"
@@ -517,11 +538,48 @@ if [[ "${HMI_MODE}" == "single" ]]; then
     exit 1
   fi
 
+  RVIZ_PRESTART_CMD="set -euo pipefail; \
+set +u; ${ROS_SETUP_CMD} set -u; \
+mkdir -p \"${ROS_DIR}\" \"${ROS_DIR}/log\"; \
+export ROS_HOME=\"${ROS_DIR}\"; \
+export APS_HMI_PID_DIR=\"${PID_DIR}\"; \
+${ROS_DOMAIN_ID_EXPORT_CMD}\
+export RMW_IMPLEMENTATION=\"\${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}\"; \
+if [[ -z \"\${CYCLONEDDS_URI:-}\" && -f \"${CYCLONEDDS_CONFIG}\" ]]; then export CYCLONEDDS_URI=\"file://${CYCLONEDDS_CONFIG}\"; fi; \
+export QT_QPA_PLATFORM=xcb; \
+export QT_OPENGL=desktop; \
+export APS_HMI_WEBENGINE_GPU=$(printf '%q' "${WEBENGINE_GPU}"); \
+export APS_HMI_WEB_ZOOM_FACTOR=$(printf '%q' "${WEB_ZOOM_FACTOR}"); \
+export APS_HMI_WEBENGINE_CACHE_DIR=$(printf '%q' "${WEBENGINE_CACHE_DIR}"); \
+export APS_HMI_FORCE_SOFTWARE_GL=$(printf '%q' "${FORCE_SOFTWARE_GL}"); \
+if [[ \"${WEBENGINE_GPU}\" == \"true\" ]]; then \
+  unset QTWEBENGINE_DISABLE_GPU; \
+  export QTWEBENGINE_CHROMIUM_FLAGS='--force-device-scale-factor=1'; \
+else \
+  export QTWEBENGINE_DISABLE_GPU=1; \
+  export QTWEBENGINE_CHROMIUM_FLAGS='--disable-gpu --disable-gpu-compositing --disable-gpu-rasterization --ignore-gpu-blocklist --force-device-scale-factor=1'; \
+fi; \
+exec ${HMI_LAUNCH_PREFIX} \"${HMI_BIN}\" \
+--rviz-only true \
+--rviz-config $(printf '%q' "${RVIZ_CONFIG}") \
+--rviz-title $(printf '%q' "${WINDOW_TITLE} :: rviz") \
+--window-title $(printf '%q' "${WINDOW_TITLE} :: rviz") \
+--fullscreen false \
+--use-sim-time $(printf '%q' "${AUTOWARE_USE_SIM_TIME}")"
+
+  HMI_PRESTART_ENV_EXPORT=""
+  if [[ "${PRESTART_RVIZ}" == "true" ]]; then
+    HMI_PRESTART_ENV_EXPORT="export APS_HMI_PRESTARTED_RVIZ_PID_FILE=\"${RVIZ_PRESTART_PID_FILE}\"; "
+  else
+    rm -f "${RVIZ_PRESTART_PID_FILE}" "${RVIZ_PRESTART_PGID_FILE}"
+  fi
+
   HMI_CMD="set -euo pipefail; \
 set +u; ${ROS_SETUP_CMD} set -u; \
 mkdir -p \"${ROS_DIR}\" \"${ROS_DIR}/log\"; \
 export ROS_HOME=\"${ROS_DIR}\"; \
 export APS_HMI_PID_DIR=\"${PID_DIR}\"; \
+${HMI_PRESTART_ENV_EXPORT}\
 ${ROS_DOMAIN_ID_EXPORT_CMD}\
 export RMW_IMPLEMENTATION=\"\${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}\"; \
 if [[ -z \"\${CYCLONEDDS_URI:-}\" && -f \"${CYCLONEDDS_CONFIG}\" ]]; then export CYCLONEDDS_URI=\"file://${CYCLONEDDS_CONFIG}\"; fi; \
@@ -547,6 +605,23 @@ exec ${HMI_LAUNCH_PREFIX} \"${HMI_BIN}\" \
 --fullscreen $(printf '%q' "${FULLSCREEN}") \
 --use-sim-time $(printf '%q' "${AUTOWARE_USE_SIM_TIME}") \
 --ros-args -r __node:=aps_hmi_container -p use_sim_time:=${AUTOWARE_USE_SIM_TIME}"
+
+  if [[ "${PRESTART_RVIZ}" == "true" ]]; then
+    echo "[INFO] prestarting RViz child..."
+    rm -f "${RVIZ_PRESTART_PID_FILE}" "${RVIZ_PRESTART_PGID_FILE}" "${PID_DIR}/rviz_user.pid"
+    nohup setsid bash -lc "${RVIZ_PRESTART_CMD}" >>"${HMI_LOG_FILE}" 2>&1 &
+    rviz_prestart_pid=$!
+    echo "${rviz_prestart_pid}" > "${RVIZ_PRESTART_PID_FILE}"
+    rviz_prestart_pgid="$(ps -o pgid= -p "${rviz_prestart_pid}" 2>/dev/null | tr -d ' ' || true)"
+    if [[ -n "${rviz_prestart_pgid}" ]]; then
+      echo "${rviz_prestart_pgid}" > "${RVIZ_PRESTART_PGID_FILE}"
+    fi
+    sleep 0.2
+    if ! kill -0 "${rviz_prestart_pid}" >/dev/null 2>&1; then
+      echo "[WARN] prestarted RViz child exited early; standalone HMI will fall back to normal RViz spawn" >&2
+      rm -f "${RVIZ_PRESTART_PID_FILE}" "${RVIZ_PRESTART_PGID_FILE}"
+    fi
+  fi
 
   echo "[INFO] starting standalone aps_hmi_container..."
   rm -f "${HMI_SHELL_WID_FILE}"

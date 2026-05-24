@@ -12,6 +12,8 @@ AUTOWARE_PID_FILE="${PID_DIR}/autoware_launch.pid"
 AUTOWARE_PGID_FILE="${PID_DIR}/autoware_launch.pgid"
 HMI_PID_FILE="${PID_DIR}/hmi_container.pid"
 HMI_PGID_FILE="${PID_DIR}/hmi_container.pgid"
+RVIZ_PRESTART_PID_FILE="${PID_DIR}/rviz_user_prestart.pid"
+RVIZ_PRESTART_PGID_FILE="${PID_DIR}/rviz_user_prestart.pgid"
 
 process_alive() {
   local pid="$1"
@@ -115,6 +117,7 @@ close_hmi_windows() {
 bash "${ROOT_DIR}/scripts/stop_hmi_preview.sh" >/dev/null 2>&1 || true
 stop_pid_file "${AUTOWARE_PID_FILE}" "${AUTOWARE_PGID_FILE}" "autoware.launch"
 stop_pid_file "${HMI_PID_FILE}" "${HMI_PGID_FILE}" "HMI container"
+stop_pid_file "${RVIZ_PRESTART_PID_FILE}" "${RVIZ_PRESTART_PGID_FILE}" "HMI prestarted rviz"
 stop_pattern_group 'build/aps_hmi_container/aps_hmi_container .*--frontend-only true' 'HMI frontend'
 stop_pattern_group 'build/aps_hmi_container/aps_hmi_container .*--rviz-only true' 'HMI rviz'
 stop_pattern_group 'build/aps_hmi_container/aps_hmi_container' 'HMI child process'
