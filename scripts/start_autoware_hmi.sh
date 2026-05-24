@@ -66,8 +66,11 @@ Environment overrides:
   APS_AUTOWARE_SENSOR_CONFIG_PROFILE sensor_config_profile override (default: aps998)
   APS_AUTOWARE_LANELET2_MAP_FILE  lanelet2 map file override (default: frontway2.osm)
   APS_AUTOWARE_POINTCLOUD_MAP_FILE pointcloud map file override (default: front.pcd)
+  APS_AUTOWARE_POINTCLOUD_CONTAINER_NAME pointcloud_container_name override (default: pointcloud_container)
+  APS_AUTOWARE_LAUNCH_POINTCLOUD_CONTAINER launch_pointcloud_container override for main Autoware (default: true)
   APS_AUTOWARE_LAUNCH_MAP         launch_map override for main Autoware (default: true)
   APS_AUTOWARE_ENSURE_MAP_COMPONENTS ensure_map_components override for main Autoware (default: true)
+  APS_AUTOWARE_LAUNCH_LOCALIZATION launch_localization override for main Autoware (default: true)
   APS_AUTOWARE_LAUNCH_CAMERA_DRIVER launch_camera_driver override for main Autoware (default: false)
 
 Examples:
@@ -133,8 +136,11 @@ AUTOWARE_SENSOR_MODEL="${APS_AUTOWARE_SENSOR_MODEL:-aps_sensor_kit}"
 AUTOWARE_SENSOR_CONFIG_PROFILE="${APS_AUTOWARE_SENSOR_CONFIG_PROFILE:-aps998}"
 AUTOWARE_LANELET2_MAP_FILE="${APS_AUTOWARE_LANELET2_MAP_FILE:-frontway2.osm}"
 AUTOWARE_POINTCLOUD_MAP_FILE="${APS_AUTOWARE_POINTCLOUD_MAP_FILE:-front.pcd}"
+AUTOWARE_POINTCLOUD_CONTAINER_NAME="${APS_AUTOWARE_POINTCLOUD_CONTAINER_NAME:-pointcloud_container}"
+AUTOWARE_LAUNCH_POINTCLOUD_CONTAINER="${APS_AUTOWARE_LAUNCH_POINTCLOUD_CONTAINER:-true}"
 AUTOWARE_LAUNCH_MAP="${APS_AUTOWARE_LAUNCH_MAP:-true}"
 AUTOWARE_ENSURE_MAP_COMPONENTS="${APS_AUTOWARE_ENSURE_MAP_COMPONENTS:-true}"
+AUTOWARE_LAUNCH_LOCALIZATION="${APS_AUTOWARE_LAUNCH_LOCALIZATION:-true}"
 AUTOWARE_LAUNCH_CAMERA_DRIVER="${APS_AUTOWARE_LAUNCH_CAMERA_DRIVER:-false}"
 
 mkdir -p "${PID_DIR}" "${LOG_DIR}" "${ROS_DIR}" "${ROS_DIR}/log" "${WEBENGINE_CACHE_DIR}"
@@ -328,8 +334,11 @@ start_autoware_launch() {
     "sensor_config_profile:=${AUTOWARE_SENSOR_CONFIG_PROFILE}"
     "lanelet2_map_file:=${AUTOWARE_LANELET2_MAP_FILE}"
     "pointcloud_map_file:=${AUTOWARE_POINTCLOUD_MAP_FILE}"
+    "pointcloud_container_name:=${AUTOWARE_POINTCLOUD_CONTAINER_NAME}"
+    "launch_pointcloud_container:=${AUTOWARE_LAUNCH_POINTCLOUD_CONTAINER}"
     "launch_map:=${AUTOWARE_LAUNCH_MAP}"
     "ensure_map_components:=${AUTOWARE_ENSURE_MAP_COMPONENTS}"
+    "launch_localization:=${AUTOWARE_LAUNCH_LOCALIZATION}"
     "launch_camera_driver:=${AUTOWARE_LAUNCH_CAMERA_DRIVER}"
     "launch_hmi_container:=false"
     "hmi_single_container:=${HMI_SINGLE_CONTAINER}"
@@ -464,9 +473,12 @@ echo "[INFO] sensor_model: ${AUTOWARE_SENSOR_MODEL}"
 echo "[INFO] sensor_config_profile: ${AUTOWARE_SENSOR_CONFIG_PROFILE}"
 echo "[INFO] lanelet2_map_file: ${AUTOWARE_LANELET2_MAP_FILE}"
 echo "[INFO] pointcloud_map_file: ${AUTOWARE_POINTCLOUD_MAP_FILE}"
+echo "[INFO] pointcloud_container_name: ${AUTOWARE_POINTCLOUD_CONTAINER_NAME}"
+echo "[INFO] launch_pointcloud_container: ${AUTOWARE_LAUNCH_POINTCLOUD_CONTAINER}"
 echo "[INFO] launch_map: ${AUTOWARE_LAUNCH_MAP}"
-echo "[INFO] launch_camera_driver: ${AUTOWARE_LAUNCH_CAMERA_DRIVER}"
 echo "[INFO] ensure_map_components: ${AUTOWARE_ENSURE_MAP_COMPONENTS}"
+echo "[INFO] launch_localization: ${AUTOWARE_LAUNCH_LOCALIZATION}"
+echo "[INFO] launch_camera_driver: ${AUTOWARE_LAUNCH_CAMERA_DRIVER}"
 if [[ -n "${AUTOWARE_MAP_PATH}" ]]; then
   echo "[INFO] map_path: ${AUTOWARE_MAP_PATH}"
 fi
