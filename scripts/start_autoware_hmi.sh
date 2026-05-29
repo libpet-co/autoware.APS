@@ -58,6 +58,7 @@ Environment overrides:
   APS_HMI_XAUTHORITY              Explicit X11 authority file override
   APS_AUTOWARE_LAUNCH_DEBUG       true/false pass --debug to ros2 launch (default: false)
   APS_AUTOWARE_SKIP_INCLUDE_ARG_CHECK true/false skip ROS launch include preflight argument scan (default: true)
+  APS_AUTOWARE_START_SETTLE_SEC   Seconds to wait after starting Autoware before continuing (default: 2)
   APS_ROS_DOMAIN_ID               Optional ROS_DOMAIN_ID override
   APS_CYCLONEDDS_CONFIG           CycloneDDS XML path (default: $HOME/cyclonedds.xml)
   APS_AUTOWARE_USE_SIM_TIME       Autoware use_sim_time value (default: false)
@@ -124,6 +125,11 @@ HMI_LAUNCH_PREFIX="${APS_HMI_LAUNCH_PREFIX:-}"
 AUTOWARE_LAUNCH_PREFIX="${APS_AUTOWARE_LAUNCH_PREFIX:-}"
 AUTOWARE_LAUNCH_DEBUG="$(printf %s "${APS_AUTOWARE_LAUNCH_DEBUG:-false}" | tr [:upper:] [:lower:])"
 AUTOWARE_SKIP_INCLUDE_ARG_CHECK="$(printf '%s' "${APS_AUTOWARE_SKIP_INCLUDE_ARG_CHECK:-true}" | tr '[:upper:]' '[:lower:]')"
+AUTOWARE_START_SETTLE_SEC="${APS_AUTOWARE_START_SETTLE_SEC:-2}"
+if [[ ! "${AUTOWARE_START_SETTLE_SEC}" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+  echo "[ERROR] unsupported APS_AUTOWARE_START_SETTLE_SEC: ${AUTOWARE_START_SETTLE_SEC}" >&2
+  exit 1
+fi
 AUTOWARE_FAST_LAUNCH_PATH="${ROOT_DIR}/scripts/ros_launch_fast"
 AUTOWARE_FAST_LAUNCH_ENV_CMD=""
 if [[ "${AUTOWARE_SKIP_INCLUDE_ARG_CHECK}" == "true" ]]; then
@@ -416,7 +422,7 @@ exec ${AUTOWARE_LAUNCH_PREFIX} ros2 launch${autoware_debug_arg} autoware_launch 
     echo "${autoware_pgid}" > "${AUTOWARE_PGID_FILE}"
   fi
 
-  sleep 2
+  sleep "${AUTOWARE_START_SETTLE_SEC}"
   if ! kill -0 "${autoware_pid}" >/dev/null 2>&1; then
     echo "[ERROR] autoware.launch.xml failed to stay up. Last log lines:" >&2
     tail -n 80 "${AUTOWARE_LOG_FILE}" >&2 || true
@@ -488,6 +494,7 @@ if [[ -n "${AUTOWARE_LAUNCH_PREFIX}" ]]; then
 fi
 echo "[INFO] autoware launch debug: ${AUTOWARE_LAUNCH_DEBUG}"
 echo "[INFO] autoware skip include arg check: ${AUTOWARE_SKIP_INCLUDE_ARG_CHECK}"
+echo "[INFO] autoware start settle sec: ${AUTOWARE_START_SETTLE_SEC}"
 echo "[INFO] Autoware use_sim_time: ${AUTOWARE_USE_SIM_TIME}"
 echo "[INFO] vehicle_model: ${AUTOWARE_VEHICLE_MODEL}"
 echo "[INFO] sensor_model: ${AUTOWARE_SENSOR_MODEL}"
