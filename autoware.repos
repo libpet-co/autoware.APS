@@ -38,7 +38,7 @@ repositories:
   # universe
   universe/autoware_universe.APS:
     type: git
-    url: https://github.com/libpet-co/autoware_universe.APS.git
+    url: git@github.com:libpet-co/autoware_universe.APS.git
     version: localization_check
   universe/external/tier4_ad_api_adaptor: # TODO(TIER IV): Migrate to AD API and remove this repository entry.
     type: git
