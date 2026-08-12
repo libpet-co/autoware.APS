@@ -97,7 +97,7 @@ repositories:
   launcher/autoware_launch_APS:
     type: git
     url: git@github.com:libpet-co/autoware_launch_APS.git
-    version: PCFA/stabilization
+    version: hmi_container_dev
   launcher/autoware_launch_APS/vehicle/aps_vehicle_launch/aps_vehicle_launch:
     type: git
     url: git@github.com:libpet-co/aps_vehicle_launch.git
