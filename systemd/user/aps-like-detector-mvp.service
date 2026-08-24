@@ -1,0 +1,20 @@
+[Unit]
+Description=APS-like path detector MVP
+Wants=aps-local-hmi-stack.service
+After=aps-local-hmi-stack.service
+
+[Service]
+Type=simple
+WorkingDirectory=%h/autoware.APS
+Environment=CYCLONEDDS_URI=file:///home/libpet-aps/cyclonedds.xml
+Environment=RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+ExecStart=/usr/bin/bash -lc 'source /opt/ros/humble/setup.bash && source %h/autoware.APS/install/setup.bash && exec /usr/bin/python3 %h/autoware.APS/scripts/aps_like_detector_mvp.py'
+Restart=on-failure
+RestartSec=2
+Nice=10
+CPUQuota=5%
+MemoryMax=256M
+TimeoutStopSec=10
+
+[Install]
+WantedBy=default.target
