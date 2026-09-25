@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
-LIST_FILE="/home/libpet-aps/hmi_test/.cache/autoware_startup_prewarm.files"
-LOG_FILE="/home/libpet-aps/hmi_test/.log/autoware_startup_prewarm.log"
+LIST_FILE="/home/libpet-aps/.local/state/aps-hmi/.cache/autoware_startup_prewarm.files"
+LOG_FILE="/home/libpet-aps/.local/state/aps-hmi/.log/autoware_startup_prewarm.log"
 mkdir -p "$(dirname "$LOG_FILE")"
 start_ms=$(date +%s%3N)
 count=0

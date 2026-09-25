@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="${APS_ROOT_DIR:-$HOME/autoware.APS}"
-HMI_TEST_ROOT="${HMI_TEST_ROOT:-$HOME/hmi_test}"
+HMI_TEST_ROOT="${HMI_TEST_ROOT:-$HOME/.local/state/aps-hmi}"
 BASHRC_PATH="${APS_HMI_ENV_BASHRC:-$HOME/.bashrc}"
 
 inherit_ros_env_from_bashrc() {

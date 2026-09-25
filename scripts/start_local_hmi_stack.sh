@@ -26,7 +26,7 @@ Defaults:
 Environment overrides:
   APS_ROOT_DIR                    Autoware workspace root (default: $HOME/autoware.APS)
   APS_FRONTEND_BACKEND_ROOT       Local APS frontend/backend repo (default: $HOME/APS_Frontend_Backend)
-  APS_HMI_TEST_ROOT               Runtime root (default: $HOME/hmi_test)
+  APS_HMI_TEST_ROOT               Runtime root (default: $HOME/.local/state/aps-hmi)
   APS_LOCAL_STACK_PID_DIR         PID directory (default: $APS_HMI_TEST_ROOT/.pid)
   APS_LOCAL_STACK_LOG_DIR         Log directory (default: $APS_HMI_TEST_ROOT/.log)
   APS_HMI_ROS_DIR                 ROS_HOME directory (default: $APS_HMI_TEST_ROOT/.ros)
@@ -50,7 +50,7 @@ fi
 
 ROOT_DIR="${APS_ROOT_DIR:-$HOME/autoware.APS}"
 FRONTEND_ROOT="${APS_FRONTEND_BACKEND_ROOT:-$HOME/APS_Frontend_Backend}"
-HMI_TEST_ROOT="${APS_HMI_TEST_ROOT:-$HOME/hmi_test}"
+HMI_TEST_ROOT="${APS_HMI_TEST_ROOT:-$HOME/.local/state/aps-hmi}"
 SCRIPT_HINT_DIR="${APS_HMI_SCRIPT_DIR:-$ROOT_DIR/scripts}"
 STACK_PID_DIR="${APS_LOCAL_STACK_PID_DIR:-$HMI_TEST_ROOT/.pid}"
 STACK_LOG_DIR="${APS_LOCAL_STACK_LOG_DIR:-$HMI_TEST_ROOT/.log}"

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="${APS_ROOT_DIR:-$HOME/autoware.APS}"
-HMI_TEST_ROOT="${APS_HMI_TEST_ROOT:-$HOME/hmi_test}"
+HMI_TEST_ROOT="${APS_HMI_TEST_ROOT:-$HOME/.local/state/aps-hmi}"
 LOG_DIR="${APS_HMI_LOG_DIR:-$HMI_TEST_ROOT/.log}"
 ROS_DIR="${APS_HMI_ROS_DIR:-$HMI_TEST_ROOT/.ros}"
 SETUP_ENV_CACHE="${APS_HMI_SETUP_ENV_CACHE:-$HMI_TEST_ROOT/.cache/autoware_setup_env.bash}"

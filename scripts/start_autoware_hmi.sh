@@ -25,7 +25,7 @@ Defaults:
 
 Environment overrides:
   APS_ROOT_DIR                    Autoware workspace root (default: $HOME/autoware.APS)
-  APS_HMI_TEST_ROOT               Runtime root (default: $HOME/hmi_test)
+  APS_HMI_TEST_ROOT               Runtime root (default: $HOME/.local/state/aps-hmi)
   APS_HMI_PID_DIR                 PID directory (default: $APS_HMI_TEST_ROOT/.pid)
   APS_HMI_LOG_DIR                 Log directory (default: $APS_HMI_TEST_ROOT/.log)
   APS_HMI_ROS_DIR                 ROS_HOME directory (default: $APS_HMI_TEST_ROOT/.ros)
@@ -83,7 +83,7 @@ fi
 
 ROOT_DIR="${APS_ROOT_DIR:-$HOME/autoware.APS}"
 MAIN_LAUNCH_REPO="${APS_LAUNCH_REPO:-$ROOT_DIR/src/launcher/autoware_launch_APS}"
-HMI_TEST_ROOT="${APS_HMI_TEST_ROOT:-$HOME/hmi_test}"
+HMI_TEST_ROOT="${APS_HMI_TEST_ROOT:-$HOME/.local/state/aps-hmi}"
 FRONTEND_URL="${APS_HMI_FRONTEND_URL:-http://127.0.0.1:3001/aps/welcome}"
 PID_DIR="${APS_HMI_PID_DIR:-$HMI_TEST_ROOT/.pid}"
 LOG_DIR="${APS_HMI_LOG_DIR:-$HMI_TEST_ROOT/.log}"

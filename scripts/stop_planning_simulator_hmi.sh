@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/hmi_env.sh"
 
 ROOT_DIR="${APS_ROOT_DIR:-$HOME/autoware.APS}"
-HMI_TEST_ROOT="${APS_HMI_TEST_ROOT:-$HOME/hmi_test}"
+HMI_TEST_ROOT="${APS_HMI_TEST_ROOT:-$HOME/.local/state/aps-hmi}"
 PID_DIR="${APS_HMI_PID_DIR:-$HMI_TEST_ROOT/.pid}"
 AUTOWARE_PID_FILE="${PID_DIR}/planning_simulator.pid"
 AUTOWARE_PGID_FILE="${PID_DIR}/planning_simulator.pgid"

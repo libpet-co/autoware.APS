@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-LOG_DIR="${HOME}/hmi_test/.log"
+LOG_DIR="${HOME}/.local/state/aps-hmi/.log"
 LOG_FILE="${LOG_DIR}/startup_application.log"
 
 mkdir -p "${LOG_DIR}"

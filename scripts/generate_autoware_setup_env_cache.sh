@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="${APS_ROOT_DIR:-$HOME/autoware.APS}"
-HMI_TEST_ROOT="${APS_HMI_TEST_ROOT:-$HOME/hmi_test}"
+HMI_TEST_ROOT="${APS_HMI_TEST_ROOT:-$HOME/.local/state/aps-hmi}"
 SETUP_ENV_CACHE="${APS_HMI_SETUP_ENV_CACHE:-$HMI_TEST_ROOT/.cache/autoware_setup_env.bash}"
 
 if [[ ! -f /opt/ros/humble/setup.bash ]]; then

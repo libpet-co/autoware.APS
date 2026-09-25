@@ -72,7 +72,7 @@ current local stack flow driven by `./start_local_hmi_stack_fast.sh`.
 - The main workspace is available at `${APS_ROOT_DIR:-$HOME/autoware.APS}`.
 - The APS frontend/backend repo is available at
   `${APS_FRONTEND_BACKEND_ROOT:-$HOME/APS_Frontend_Backend}`.
-- Runtime state, logs, and PID files default to `${APS_HMI_TEST_ROOT:-$HOME/hmi_test}`.
+- Runtime state, logs, and PID files default to `${APS_HMI_TEST_ROOT:-$HOME/.local/state/aps-hmi}`.
 - By default the scripts will try to inherit `APS_ROS_DOMAIN_ID` / `ROS_DOMAIN_ID`
   (and matching ROS middleware vars) from `~/.bashrc` when the current shell
   does not already export them. Disable this with `APS_HMI_IMPORT_SHELL_ROS_ENV=false`.
